@@ -51,3 +51,4 @@ tests:
     - QuickCheck
     - hspec
     - hspec-discover
+    - time

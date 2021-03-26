@@ -61,5 +61,6 @@ test-suite tscleaner-test
     , base >=4.7 && <5
     , hspec
     , hspec-discover
+    , time
     , tscleaner
   default-language: Haskell2010
