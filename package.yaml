@@ -46,3 +46,6 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     - tscleaner
+    - QuickCheck
+    - hspec
+    - hspec-discover
