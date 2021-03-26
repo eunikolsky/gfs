@@ -25,13 +25,14 @@ source-repository head
 
 library
   exposed-modules:
-      Lib
+      GFS
   other-modules:
       Paths_tscleaner
   hs-source-dirs:
       src
   build-depends:
       base >=4.7 && <5
+    , time
   default-language: Haskell2010
 
 executable tscleaner-exe
