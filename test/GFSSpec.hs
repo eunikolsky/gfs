@@ -30,3 +30,9 @@ spec = do
             rest = input \\ cleanedUp
             cleanedUpTwice = cleanup rest
         in cleanedUp == cleanedUpTwice
+
+    it "does not create cleanup times" $ do
+      property $ \times ->
+        let input = sort . getNonEmpty $ times
+            cleanedUp = cleanup input
+        in null $ cleanedUp \\ input
