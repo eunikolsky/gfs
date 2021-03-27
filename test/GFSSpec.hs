@@ -21,3 +21,12 @@ spec = do
             newest = last input
             cleanedUp = cleanup input
         in newest `notElem` cleanedUp
+
+    it "is idempotent (cleaning up twice is the same as cleaning up once)" $ do
+      -- TODO apply multiple times
+      property $ \times ->
+        let input = sort . getNonEmpty $ times
+            cleanedUp = cleanup input
+            rest = input \\ cleanedUp
+            cleanedUpTwice = cleanup rest
+        in cleanedUp == cleanedUpTwice
