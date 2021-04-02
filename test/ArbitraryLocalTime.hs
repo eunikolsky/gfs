@@ -2,6 +2,7 @@ module ArbitraryLocalTime where
 
 import Data.Fixed (Fixed(..))
 import Data.Time.Calendar
+import Data.Time.Clock
 import Data.Time.LocalTime
 import Test.QuickCheck
 
@@ -22,3 +23,6 @@ instance Arbitrary TimeOfDay where
 
 instance Arbitrary LocalTime where
   arbitrary = LocalTime <$> arbitrary <*> arbitrary
+
+instance Arbitrary NominalDiffTime where
+  arbitrary = secondsToNominalDiffTime . MkFixed <$> arbitrary
