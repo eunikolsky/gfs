@@ -40,8 +40,8 @@ spec = do
         in null $ cleanedUp \\ input
 
     it "cleans up such that there are no remaining elements closer than the period" $ do
-      property $ \times ->
+      property $ \period times ->
         let input = sort . getNonEmpty $ times
-            remaining = input \\ cleanup nominalDay input
+            remaining = input \\ cleanup period input
             remainingPairs = zip remaining (tail remaining)
-        in all (\(time, nextTime) -> diffLocalTime nextTime time > nominalDay) remainingPairs
+        in all (\(time, nextTime) -> diffLocalTime nextTime time > period) remainingPairs
