@@ -14,9 +14,12 @@ import Data.Time.LocalTime
 -- |is not specified.
 -- |
 -- |__Note__: the most recent time is never cleaned up.
+-- |__Note__: times that are in the future (bigger than @now@) are never removed
+-- |(for safety).
+-- |
 -- |__Assumption__: @times@ is sorted in the ascending order (oldest to newest).
-cleanup :: NominalDiffTime -> [LocalTime] -> [LocalTime]
-cleanup period times = fromMaybe [] $ do
+cleanup :: NominalDiffTime -> [LocalTime] -> LocalTime -> [LocalTime]
+cleanup period times now = fromMaybe [] $ do
   let newestToOldest = reverse times
   (newest, others) <- uncons newestToOldest
   return . snd $ foldl' dropNextWhenCloseToPrevious (newest, []) others
