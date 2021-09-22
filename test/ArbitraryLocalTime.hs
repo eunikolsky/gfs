@@ -18,7 +18,7 @@ instance Arbitrary TimeOfDay where
   arbitrary = do
     hour <- choose (0, 23)
     minute <- choose (0, 59)
-    second <- fmap MkFixed arbitrary
+    second <- MkFixed <$> choose (0, 60)
     return $ TimeOfDay hour minute second
 
 instance Arbitrary LocalTime where
