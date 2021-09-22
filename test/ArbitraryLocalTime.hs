@@ -1,6 +1,6 @@
 module ArbitraryLocalTime where
 
-import Data.Fixed (Fixed(..))
+import Data.Fixed
 import Data.Time.Calendar
 import Data.Time.Clock
 import Data.Time.LocalTime
@@ -18,7 +18,9 @@ instance Arbitrary TimeOfDay where
   arbitrary = do
     hour <- choose (0, 23)
     minute <- choose (0, 59)
-    second <- MkFixed <$> choose (0, 60)
+    intSecond <- choose (0, 60)
+    -- TODO extract to `Arbitrary Second`
+    let second = MkFixed (intSecond * resolution (0 :: Pico)) :: Pico
     return $ TimeOfDay hour minute second
 
 instance Arbitrary LocalTime where
