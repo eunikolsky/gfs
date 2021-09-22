@@ -13,16 +13,16 @@ import Test.QuickCheck
 -- https://blog.ploeh.dk/2019/09/02/naming-newtypes-for-quickcheck-arbitraries/
 instance Arbitrary Day where
   arbitrary = do
-    year <- choose (1990, 2030)
-    month <- choose (1, 12)
-    day <- choose (1, 31)
+    year <- chooseInteger (1990, 2030)
+    month <- chooseInt (1, 12)
+    day <- chooseInt (1, 31)
     return $ fromGregorian year month day
 
 instance Arbitrary TimeOfDay where
   arbitrary = do
-    hour <- choose (0, 23)
-    minute <- choose (0, 59)
-    intSecond <- choose (0, 60)
+    hour <- chooseInt (0, 23)
+    minute <- chooseInt (0, 59)
+    intSecond <- chooseInteger (0, 60)
     -- TODO extract to `Arbitrary Second`
     let second = MkFixed (intSecond * resolution (0 :: Pico)) :: Pico
     return $ TimeOfDay hour minute second
