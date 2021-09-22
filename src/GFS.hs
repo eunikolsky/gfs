@@ -1,11 +1,19 @@
 module GFS
-    ( cleanup
+    ( Period
+    , cleanup
     ) where
 
 import Data.List
 import Data.Maybe
 import Data.Time.Clock
 import Data.Time.LocalTime
+
+type OffsetFrom = NominalDiffTime
+type OffsetTo = NominalDiffTime
+-- |A @period@ is a segment of time which counts back from "now", thus
+-- |@OffsetFrom@ must be less than @OffsetTo@.
+-- |E.g.: @(1d, 7d)@ meaning a range of @[now - 7d … now - 1d]@.
+type Period = (OffsetFrom, OffsetTo)
 
 -- |The main cleanup function that takes a sorted list of @times@ and returns
 -- |the ones that should be removed to satisfy the requirements of the GFS
