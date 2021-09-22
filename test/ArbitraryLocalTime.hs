@@ -12,7 +12,11 @@ import Test.QuickCheck
 -- on a more specific newtype?
 -- https://blog.ploeh.dk/2019/09/02/naming-newtypes-for-quickcheck-arbitraries/
 instance Arbitrary Day where
-  arbitrary = fmap ModifiedJulianDay arbitrary
+  arbitrary = do
+    year <- choose (1990, 2030)
+    month <- choose (1, 12)
+    day <- choose (1, 31)
+    return $ fromGregorian year month day
 
 instance Arbitrary TimeOfDay where
   arbitrary = do
