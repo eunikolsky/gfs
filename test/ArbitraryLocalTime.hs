@@ -18,13 +18,18 @@ instance Arbitrary Day where
     day <- chooseInt (1, 31)
     return $ fromGregorian year month day
 
+-- |Chooses an arbitrary integer second in the given @range@.
+chooseSecond :: (Int, Int) -> Gen Pico
+chooseSecond range = do
+    -- TODO extract to `Arbitrary Second`?
+    intSecond <- chooseInt range
+    return . MkFixed $ (fromIntegral intSecond) * (resolution (0 :: Pico))
+
 instance Arbitrary TimeOfDay where
   arbitrary = do
     hour <- chooseInt (0, 23)
     minute <- chooseInt (0, 59)
-    intSecond <- chooseInteger (0, 60)
-    -- TODO extract to `Arbitrary Second`
-    let second = MkFixed (intSecond * resolution (0 :: Pico)) :: Pico
+    second <- chooseSecond (0, 60)
     return $ TimeOfDay hour minute second
 
 instance Arbitrary LocalTime where

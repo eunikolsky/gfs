@@ -1,5 +1,6 @@
 module RangedInput where
 
+import ArbitraryLocalTime
 import GFS
 
 import Data.Time.Calendar
@@ -27,11 +28,29 @@ data RangedInput = RangedInput
   }
   deriving Show
 
+nominalHour = 60 * 60
+
+-- |Returns the number of seconds for the given number of hours.
+hours :: Int -> Int
+hours = (* nominalHour)
+
+-- |Returns the number of seconds for the given number of weeks.
+weeks :: Int -> Int
+weeks = (* nominalWeek)
+  where nominalWeek = nominalHour * 24 * 7
+
 instance Arbitrary RangedInput where
   arbitrary = do
-    let numRanges = 6
-        range = RangeInput (LocalTime (ModifiedJulianDay 0) midnight) []
+    now <- arbitrary
+    offsetFrom <- chooseSecond (hours 1, weeks 4)
+    numRanges <- chooseInt (1, 5)
+
+    let
+      -- note: this always generates an @offsetTo@ that is an integer multiplier
+      -- away from @offsetFrom@
+      offsetTo = offsetFrom * (fromIntegral numRanges + 1)
+      range = RangeInput (LocalTime (ModifiedJulianDay 0) midnight) []
     return $ RangedInput
-      (LocalTime (ModifiedJulianDay 0) midnight)
-      (nominalDay, (numRanges + 1) * nominalDay)
-      (NonEmpty [range])
+      now
+      (secondsToNominalDiffTime offsetFrom, secondsToNominalDiffTime offsetTo)
+      (NonEmpty $ replicate numRanges range)
