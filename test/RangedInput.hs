@@ -1,3 +1,5 @@
+{-# LANGUAGE TypeApplications #-}
+
 module RangedInput where
 
 import ArbitraryLocalTime
@@ -6,14 +8,7 @@ import GFS
 import Data.Time.Calendar
 import Data.Time.Clock
 import Data.Time.LocalTime
-import Data.Word
 import Test.QuickCheck
-
-data RangeInput = RangeInput
-  { rangeMaxTime :: LocalTime
-  , rangeTimes :: [LocalTime]
-  }
-  deriving Show
 
 -- |Data type defining all the inputs for the @cleanup@ function. The reason for
 -- |the separate type is we need to generate an initial offset and a number of
@@ -23,8 +18,7 @@ data RangeInput = RangeInput
 data RangedInput = RangedInput
   { riNow :: LocalTime
   , riPeriod :: Period
-  --, riNumRanges :: Positive Word8
-  , riRanges :: NonEmptyList RangeInput
+  , riTimes :: SortedList LocalTime
   }
   deriving Show
 
@@ -41,16 +35,19 @@ weeks = (* nominalWeek)
 
 instance Arbitrary RangedInput where
   arbitrary = do
-    now <- arbitrary
+    --now <- arbitrary
+    let now = LocalTime (fromGregorian 2000 01 01) midnight
     offsetFrom <- chooseSecond (hours 1, weeks 4)
-    numRanges <- chooseInt (1, 5)
+    offsetToMultiplier <- choose @Float (1.1, 4.9)
 
-    let
-      -- note: this always generates an @offsetTo@ that is an integer multiplier
-      -- away from @offsetFrom@
-      offsetTo = offsetFrom * (fromIntegral numRanges + 1)
-      range = RangeInput (LocalTime (ModifiedJulianDay 0) midnight) []
+    -- offsetTo is always bigger than offsetFrom
+    let offsetTo = offsetFrom * realToFrac offsetToMultiplier
+
+    -- range: [now - offsetTo * 1.2; now]
+    timeOffset <- choose @Float (-1.2, 0)
+    let time = addLocalTime (secondsToNominalDiffTime $ offsetTo * realToFrac timeOffset) now
+
     return $ RangedInput
       now
       (secondsToNominalDiffTime offsetFrom, secondsToNominalDiffTime offsetTo)
-      (NonEmpty $ replicate numRanges range)
+      (Sorted [time])
