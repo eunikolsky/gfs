@@ -35,17 +35,20 @@ weeks = (* nominalWeek)
 
 instance Arbitrary RangedInput where
   arbitrary = do
-    --now <- arbitrary
+    -- TODO a fixed date is easier for development
     let now = LocalTime (fromGregorian 2000 01 01) midnight
-    offsetFrom <- chooseSecond (hours 1, weeks 4)
+    offsetFrom <- chooseSecond (hours 1, weeks 1)
     offsetToMultiplier <- choose @Float (1.1, 4.9)
 
     -- offsetTo is always bigger than offsetFrom
     let offsetTo = offsetFrom * realToFrac offsetToMultiplier
 
-    -- range: [now - offsetTo * 1.2; now]
-    timeOffset <- choose @Float (-1.2, 0)
-    let time = addLocalTime (secondsToNominalDiffTime $ offsetTo * realToFrac timeOffset) now
+    -- range: [now - offsetTo * 2; now - offsetTo] ∪ [now - offsetFrom; now]
+    timeOffset <- oneof
+      [ (* offsetTo) . realToFrac <$> choose @Float (-2, -1)
+      , (* offsetFrom) . realToFrac <$> choose @Float (-1, 0)
+      ]
+    let time = addLocalTime (secondsToNominalDiffTime timeOffset) now
 
     return $ RangedInput
       now

@@ -47,25 +47,13 @@ spec = do
             cleanedUp = cleanup period input now
         in null $ cleanedUp \\ input
 
+    -- TODO does this property makes sense now?
     --it "cleans up such that there are no remaining elements closer than the period" $ do
-      --property $ \period times now ->
-        --let input = sort . getNonEmpty $ times
-            --remaining = input \\ cleanup period input now
-            --remainingPairs = zip remaining (tail remaining)
-        --in all (\(time, nextTime) -> diffLocalTime nextTime time > period) remainingPairs
 
-    it "leaves items only in the specified range" $ do
+    it "cleans up items outside of the specified range" $ do
       property $ \rangedInput ->
         let now = riNow rangedInput
             range = riPeriod rangedInput
             input = getSorted . riTimes $ rangedInput
-            remaining = input \\ cleanup range input now
-        in all (within range now) remaining
-
-        where
-          within :: Period -> LocalTime -> LocalTime -> Bool
-          within range now remaining = (remaining >= from) && (remaining <= to)
-            where
-              from = addLocalTime (-offsetTo) now
-              to = addLocalTime (-offsetFrom) now
-              (offsetFrom, offsetTo) = range
+            cleanedUp = cleanup range input now
+        in sort cleanedUp == input
