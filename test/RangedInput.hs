@@ -52,5 +52,5 @@ instance Arbitrary RangedInput where
 
     return $ RangedInput
       now
-      (secondsToNominalDiffTime offsetFrom, secondsToNominalDiffTime offsetTo)
+      (Period (secondsToNominalDiffTime offsetFrom, secondsToNominalDiffTime offsetTo))
       (Sorted [time])

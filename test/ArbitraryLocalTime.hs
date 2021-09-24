@@ -1,5 +1,8 @@
 module ArbitraryLocalTime where
 
+import GFS
+
+import Control.Applicative
 import Data.Fixed
 import Data.Time.Calendar
 import Data.Time.Clock
@@ -37,3 +40,7 @@ instance Arbitrary LocalTime where
 
 instance Arbitrary NominalDiffTime where
   arbitrary = secondsToNominalDiffTime . MkFixed <$> arbitrary
+
+-- TODO derived by compiler?
+instance Arbitrary Period where
+  arbitrary = Period <$> liftA2 (,) arbitrary arbitrary
