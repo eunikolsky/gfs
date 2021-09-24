@@ -56,4 +56,13 @@ spec = do
             range = riPeriod rangedInput
             input = getSorted . riTimes $ rangedInput
             cleanedUp = cleanup range input now
-        in sort cleanedUp == input
+        in counterexample (describePeriod range now)
+          $ sort cleanedUp == input
+
+        where
+          -- |Describes @period@ as times relative to @now@.
+          describePeriod (PrettyTimeInterval offsetFrom, PrettyTimeInterval offsetTo) now
+            = concat ["Period: from ", from, " to ", to]
+            where
+              from = show $ addLocalTime (-offsetTo) now
+              to = show $ addLocalTime (-offsetFrom) now

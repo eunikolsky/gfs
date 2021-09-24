@@ -43,6 +43,8 @@ instance Show PrettyTimeInterval where
 type OffsetFrom = PrettyTimeInterval
 type OffsetTo = PrettyTimeInterval
 
+-- FIXME clarify the terms "range" vs "period"! and the direction OffsetFrom <-> OffsetTo!
+
 -- |A @period@ is a segment of time which counts back from "now".
 -- |@OffsetFrom@ must be less than @OffsetTo@ because the offsets here are
 -- |positive even though they represent negative offsets from "now".
