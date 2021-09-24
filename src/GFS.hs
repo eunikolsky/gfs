@@ -1,5 +1,6 @@
 module GFS
     ( Period
+    , PrettyTimeInterval(..)
     , cleanup
     ) where
 
@@ -8,8 +9,40 @@ import Data.Maybe
 import Data.Time.Clock
 import Data.Time.LocalTime
 
-type OffsetFrom = NominalDiffTime
-type OffsetTo = NominalDiffTime
+-- |Wrapper for @NominalDiffTime@ that @show@s the value in a human-friendlier
+-- |way than just seconds, e.g. "1 w 2 h 10 s".
+-- |Warning: seconds are always displayed as integers.
+newtype PrettyTimeInterval = PrettyTimeInterval NominalDiffTime
+
+instance Show PrettyTimeInterval where
+  show (PrettyTimeInterval diffTime) = formatUnits
+    where
+      formatUnits
+        = intercalate " "
+        . map (\(amount, unit) -> concat [show amount, " ", unit])
+        . filter ((/= 0) . fst)
+        . flip zip ["week", "d", "h", "min", "s"]
+        . reverse
+        . snd
+        . foldl' (\(secondsLeft, unitAmounts) unit ->
+            let (unitAmount, fewerSeconds) = secondsLeft `divMod` unit
+            in (fewerSeconds, unitAmount:unitAmounts))
+          (seconds, [])
+        $ [week, day, hour, minute, second]
+
+      seconds = truncate . nominalDiffTimeToSeconds $ diffTime
+
+      second = 1
+      minute = 60 * second
+      hour = 60 * minute
+      day = 24 * hour
+      week = 7 * day
+
+-- TODO it's somewhat strange to force a pretty time interval instead of a
+-- regular one…
+type OffsetFrom = PrettyTimeInterval
+type OffsetTo = PrettyTimeInterval
+
 -- |A @period@ is a segment of time which counts back from "now".
 -- |@OffsetFrom@ must be less than @OffsetTo@ because the offsets here are
 -- |positive even though they represent negative offsets from "now".

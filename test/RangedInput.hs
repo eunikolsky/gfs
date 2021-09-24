@@ -52,5 +52,10 @@ instance Arbitrary RangedInput where
 
     return $ RangedInput
       now
-      (secondsToNominalDiffTime offsetFrom, secondsToNominalDiffTime offsetTo)
+      ( PrettyTimeInterval $ secondsToNominalDiffTime offsetFrom
+      , PrettyTimeInterval $ secondsToNominalDiffTime offsetTo
+      )
       (Sorted [time])
+
+instance Arbitrary PrettyTimeInterval where
+  arbitrary = PrettyTimeInterval <$> arbitrary
