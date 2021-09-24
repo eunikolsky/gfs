@@ -1,5 +1,5 @@
 module GFS
-    ( Period(..)
+    ( Period
     , cleanup
     ) where
 
@@ -15,8 +15,7 @@ type OffsetTo = NominalDiffTime
 -- |positive even though they represent negative offsets from "now".
 -- |
 -- |E.g.: @(1d, 7d)@ means a range of @[now - 7d … now - 1d]@.
-newtype Period = Period (OffsetFrom, OffsetTo)
-  deriving Show
+type Period = (OffsetFrom, OffsetTo)
 
 -- |The main cleanup function that takes a sorted list of @times@ and returns
 -- |the ones that should be removed to satisfy the requirements of the GFS
