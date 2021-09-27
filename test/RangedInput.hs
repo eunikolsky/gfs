@@ -5,6 +5,7 @@ module RangedInput where
 import ArbitraryLocalTime
 import GFS
 
+import Data.Fixed
 import Data.Time.Calendar
 import Data.Time.Clock
 import Data.Time.LocalTime
@@ -17,6 +18,7 @@ import Test.QuickCheck
 -- |anyway.
 data RangedInput = RangedInput
   { riNow :: LocalTime
+  , riNewest :: LocalTime
   , riPeriod :: Period
   , riTimes :: SortedList LocalTime
   }
@@ -37,6 +39,7 @@ instance Arbitrary RangedInput where
   arbitrary = do
     -- TODO a fixed date is easier for development
     let now = LocalTime (fromGregorian 2000 01 01) midnight
+        newest = addLocalTime (secondsToNominalDiffTime (-1 :: Pico)) now
     offsetFrom <- chooseSecond (hours 1, weeks 1)
     offsetToMultiplier <- choose @Float (1.1, 4.9)
 
@@ -52,6 +55,7 @@ instance Arbitrary RangedInput where
 
     return $ RangedInput
       now
+      newest
       ( PrettyTimeInterval $ secondsToNominalDiffTime offsetFrom
       , PrettyTimeInterval $ secondsToNominalDiffTime offsetTo
       )

@@ -55,10 +55,12 @@ spec = do
       property $ \rangedInput ->
         let now = riNow rangedInput
             range = riPeriod rangedInput
-            input = getSorted . riTimes $ rangedInput
+            inputTimes = getSorted . riTimes $ rangedInput
+            -- we always have to separately add a newest time that is never removed
+            input = inputTimes ++ [riNewest rangedInput]
             cleanedUp = cleanup range input now
         in counterexample (describePeriod range now)
-          $ sort cleanedUp == input
+          $ sort cleanedUp == inputTimes
 
         where
           -- |Describes @period@ as times relative to @now@.
