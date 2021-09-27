@@ -38,9 +38,9 @@ spec = do
         let input = sort . getNonEmpty $ times
             cleanedUp = cleanup period input now
             rest = input \\ cleanedUp
-            cleanedUpTwice = cleanup period rest now
-        in counterexample (concat ["cleanedUp: ", show cleanedUp, "; cleanedUpTwice: ", show cleanedUpTwice])
-          $ cleanedUp == cleanedUpTwice
+            restAgain = rest \\ cleanup period rest now
+        in counterexample (concat ["rest: ", show rest, "; restAgain: ", show restAgain])
+          $ rest == restAgain
 
     it "does not create cleanup times" $ do
       property $ \period times now ->
