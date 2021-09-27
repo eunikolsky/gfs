@@ -68,7 +68,16 @@ type Period = (OffsetFrom, OffsetTo)
 -- |
 -- |__Assumption__: @times@ is sorted in the ascending order (oldest to newest).
 cleanup :: Period -> [LocalTime] -> LocalTime -> [LocalTime]
-cleanup period times now = []
+cleanup period times now = leaveNewest . takeWhile (before now) $ times
+  where
+    before = flip (<=)
+    leaveNewest = dropLast
+
+-- |Returns the list without the last element.
+dropLast :: [a] -> [a]
+dropLast [] = []
+dropLast xs = take (length xs - 1) xs
+
 --fromMaybe [] $ do
   --let newestToOldest = reverse times
   --(newest, others) <- uncons newestToOldest

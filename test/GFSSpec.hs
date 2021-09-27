@@ -39,7 +39,8 @@ spec = do
             cleanedUp = cleanup period input now
             rest = input \\ cleanedUp
             cleanedUpTwice = cleanup period rest now
-        in cleanedUp == cleanedUpTwice
+        in counterexample (concat ["cleanedUp: ", show cleanedUp, "; cleanedUpTwice: ", show cleanedUpTwice])
+          $ cleanedUp == cleanedUpTwice
 
     it "does not create cleanup times" $ do
       property $ \period times now ->
