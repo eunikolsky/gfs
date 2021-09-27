@@ -18,7 +18,8 @@ instance Show PrettyTimeInterval where
   show (PrettyTimeInterval diffTime) = formatUnits
     where
       formatUnits
-        = intercalate " "
+        = ("0" `ifEmpty`)
+        . intercalate " "
         . map (\(amount, unit) -> concat [show amount, " ", unit])
         . filter ((/= 0) . fst)
         . flip zip ["week", "d", "h", "min", "s"]
@@ -37,6 +38,10 @@ instance Show PrettyTimeInterval where
       hour = 60 * minute
       day = 24 * hour
       week = 7 * day
+
+      ifEmpty :: [a] -> [a] -> [a]
+      ifEmpty def [] = def
+      ifEmpty _ xs = xs
 
 -- TODO it's somewhat strange to force a pretty time interval instead of a
 -- regular one…
