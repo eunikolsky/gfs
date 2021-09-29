@@ -51,8 +51,8 @@ spec = do
     -- TODO does this property makes sense now?
     --it "cleans up such that there are no remaining elements closer than the period" $ do
 
-    it "cleans up items outside of the specified range" $ do
-      property $ \rangedInput ->
+    it "cleans up items outside of the specified range (with exceptions)" $ do
+      property $ forAll arbitraryInputOutsideOfRange $ \rangedInput ->
         let now = riNow rangedInput
             range = riPeriod rangedInput
             inputTimes = getSorted . riTimes $ rangedInput

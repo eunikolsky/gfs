@@ -35,31 +35,33 @@ weeks :: Int -> Int
 weeks = (* nominalWeek)
   where nominalWeek = nominalHour * 24 * 7
 
-instance Arbitrary RangedInput where
-  arbitrary = do
-    -- TODO a fixed date is easier for development
-    let now = LocalTime (fromGregorian 2000 01 01) midnight
-        newest = addLocalTime (secondsToNominalDiffTime (-1 :: Pico)) now
-    offsetFrom <- chooseSecond (hours 1, weeks 1)
-    offsetToMultiplier <- choose @Float (1.1, 4.9)
+-- |Generates an arbitrary @RangedInput@ such that the @riTimes@ are outside
+-- |the generated @riPeriod@ (within certain bounds).
+arbitraryInputOutsideOfRange :: Gen RangedInput
+arbitraryInputOutsideOfRange = do
+  -- TODO a fixed date is easier for development
+  let now = LocalTime (fromGregorian 2000 01 01) midnight
+      newest = addLocalTime (secondsToNominalDiffTime (-1 :: Pico)) now
+  offsetFrom <- chooseSecond (hours 1, weeks 1)
+  offsetToMultiplier <- choose @Float (1.1, 4.9)
 
-    -- offsetTo is always bigger than offsetFrom
-    let offsetTo = offsetFrom * realToFrac offsetToMultiplier
+  -- offsetTo is always bigger than offsetFrom
+  let offsetTo = offsetFrom * realToFrac offsetToMultiplier
 
-    -- range: [now - offsetTo * 2; now - offsetTo] ∪ [now - offsetFrom; now]
-    timeOffset <- oneof
-      [ (* offsetTo) . realToFrac <$> choose @Float (-2, -1)
-      , (* offsetFrom) . realToFrac <$> choose @Float (-1, 0)
-      ]
-    let time = addLocalTime (secondsToNominalDiffTime timeOffset) now
+  -- range: [now - offsetTo * 2; now - offsetTo] ∪ [now - offsetFrom; now]
+  timeOffset <- oneof
+    [ (* offsetTo) . realToFrac <$> choose @Float (-2, -1)
+    , (* offsetFrom) . realToFrac <$> choose @Float (-1, 0)
+    ]
+  let time = addLocalTime (secondsToNominalDiffTime timeOffset) now
 
-    return $ RangedInput
-      now
-      newest
-      ( PrettyTimeInterval $ secondsToNominalDiffTime offsetFrom
-      , PrettyTimeInterval $ secondsToNominalDiffTime offsetTo
-      )
-      (Sorted [time])
+  return $ RangedInput
+    now
+    newest
+    ( PrettyTimeInterval $ secondsToNominalDiffTime offsetFrom
+    , PrettyTimeInterval $ secondsToNominalDiffTime offsetTo
+    )
+    (Sorted [time])
 
 instance Arbitrary PrettyTimeInterval where
   arbitrary = PrettyTimeInterval <$> arbitrary
