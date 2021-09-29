@@ -59,13 +59,12 @@ spec = do
             -- we always have to separately add a newest time that is never removed
             input = inputTimes ++ [riNewest rangedInput]
             cleanedUp = cleanup range input now
+
+            -- |Describes @period@ as times relative to @now@.
+            describePeriod (PrettyTimeInterval offsetFrom, PrettyTimeInterval offsetTo) now
+              = concat ["Period: from ", from, " to ", to]
+              where
+                from = show $ addLocalTime (-offsetTo) now
+                to = show $ addLocalTime (-offsetFrom) now
         in counterexample (describePeriod range now)
           $ sort cleanedUp == inputTimes
-
-        where
-          -- |Describes @period@ as times relative to @now@.
-          describePeriod (PrettyTimeInterval offsetFrom, PrettyTimeInterval offsetTo) now
-            = concat ["Period: from ", from, " to ", to]
-            where
-              from = show $ addLocalTime (-offsetTo) now
-              to = show $ addLocalTime (-offsetFrom) now
