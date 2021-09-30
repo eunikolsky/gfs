@@ -52,12 +52,10 @@ spec = do
     --it "cleans up such that there are no remaining elements closer than the period" $ do
 
     it "cleans up items outside of the specified range (with exceptions)" $ do
-      property $ forAll arbitraryInputOutsideOfRange $ \rangedInput ->
-        let now = riNow rangedInput
-            range = riPeriod rangedInput
-            inputTimes = getSorted . riTimes $ rangedInput
+      property $ forAll arbitraryInputOutsideOfRange $ \(now, newest, range, times) ->
+        let inputTimes = getSorted times
             -- we always have to separately add a newest time that is never removed
-            input = inputTimes ++ [riNewest rangedInput]
+            input = inputTimes ++ [newest]
             cleanedUp = cleanup range input now
 
             -- |Describes @period@ as times relative to @now@.
@@ -68,3 +66,11 @@ spec = do
                 to = show $ addLocalTime (-offsetFrom) now
         in counterexample (describePeriod range now)
           $ sort cleanedUp == inputTimes
+
+    it "leaves as many times as there are subperiods with times" $ do
+      property $ forAll arbitraryInputWithinRange $ \(now, newest, range, numSubperiods, times) ->
+        let inputTimes = getSorted times
+            -- we always have to separately add a newest time that is never removed
+            input = inputTimes ++ [newest]
+            rest = input \\ (cleanup range input now ++ [newest])
+        in length rest == numSubperiods
