@@ -7,19 +7,11 @@ import GFS
 
 import Control.Arrow ((>>>))
 import Data.Fixed
+import Data.List
 import Data.Time.Calendar
 import Data.Time.Clock
 import Data.Time.LocalTime
 import Test.QuickCheck
-
--- |Data type defining all the inputs for the @cleanup@ function.
---data RangedInputOutsideOfRange = RangedInputOutsideOfRange
-  --{ riNow :: LocalTime
-  --, riNewest :: LocalTime
-  --, riPeriod :: Period
-  --, riTimes :: SortedList LocalTime
-  --}
-  --deriving Show
 
 -- An attempt to clarify the tuples' values in the generators below. A poor
 -- replacement for a proper data type, but different generators return a
@@ -67,11 +59,11 @@ arbitraryInputWithinRange = do
   -- TODO a fixed date is easier for development
   let now = LocalTime (fromGregorian 2000 01 01) midnight
       newest = addLocalTime (secondsToNominalDiffTime (-1 :: Pico)) now
-  offsetFrom <- chooseSecond (hours 1, weeks 1)
-  numSubperiods <- chooseInt (1, 10)
+  offsetFrom <- chooseInt (hours 1, weeks 1)
+  numSubperiods <- chooseInt (2, 5)
 
   -- offsetTo is always bigger than offsetFrom
-  let offsetTo = offsetFrom * fromIntegral (numSubperiods + 1)
+  let offsetTo = offsetFrom * (numSubperiods + 1)
 
   {-timeOffset <- oneof
     [ (* offsetTo) . realToFrac <$> choose @Float (-2, -1)
@@ -82,19 +74,30 @@ arbitraryInputWithinRange = do
       => offsetTo = 8 hours,
          subperiodOffsets = [2+0*2=(1+0)*2=2 h, 2+1*2=(1+1)*2=4 h, 2+2*2=(1+2)*2=6 h, 2+3*2=(1+3)*2=8 h]
    -}
-  let subperiodOffsets = map (fromIntegral >>> (+ 1) >>> (* offsetFrom)) [0..numSubperiods]
+  let subperiodOffsets = map ((+ 1) >>> (* offsetFrom)) [0..numSubperiods]
       subperiods = adjacentPairs subperiodOffsets
-  let times = undefined -- addLocalTime (secondsToNominalDiffTime timeOffset) now
+
+      sortedTimes :: (Int, Int) -> Gen [LocalTime]
+      sortedTimes (from, to) = do
+        --arbitraryList <- arbitrary @(NonEmptyList (Gen Int))
+        --arbitraryInts <- sequence $ getNonEmpty arbitraryList
+        -- FIXME avoid values on the border!
+        arbitraryInts <- listOf1 $ choose (from, to)
+        return . fmap (flip addLocalTime now . secondsToNominalDiffTime . intToSeconds . negate) $ arbitraryInts
+  times <- concat <$> traverse sortedTimes subperiods
 
   return
     ( now
     , newest
-    , ( PrettyTimeInterval $ secondsToNominalDiffTime offsetFrom
-      , PrettyTimeInterval $ secondsToNominalDiffTime offsetTo
+    , ( PrettyTimeInterval . secondsToNominalDiffTime . intToSeconds $ offsetFrom
+      , PrettyTimeInterval . secondsToNominalDiffTime . intToSeconds $ offsetTo
       )
     , numSubperiods
-    , (Sorted [times])
+    , (Sorted $ sort times)
     )
+
+intToSeconds :: Int -> Pico
+intToSeconds = MkFixed . (* (resolution (0 :: Pico))) . fromIntegral
 
 instance Arbitrary PrettyTimeInterval where
   arbitrary = PrettyTimeInterval <$> arbitrary
