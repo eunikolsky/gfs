@@ -56,35 +56,17 @@ type NumSubperiods = Int
 -- |one time in each of the subperiods of the period.
 arbitraryInputWithinRange :: Gen (Now, Newest, Period, NumSubperiods, Times)
 arbitraryInputWithinRange = do
-  -- TODO a fixed date is easier for development
+  -- TODO a fixed date is easier for development; start from a random value and shrink towards 2000-01-01?
   let now = LocalTime (fromGregorian 2000 01 01) midnight
       newest = addLocalTime (secondsToNominalDiffTime (-1 :: Pico)) now
   offsetFrom <- chooseInt (hours 1, weeks 1)
-  numSubperiods <- chooseInt (2, 5)
+  numSubperiods <- chooseInt (1, 10)
 
   -- offsetTo is always bigger than offsetFrom
   let offsetTo = offsetFrom * (numSubperiods + 1)
 
-  {-timeOffset <- oneof
-    [ (* offsetTo) . realToFrac <$> choose @Float (-2, -1)
-    , (* offsetFrom) . realToFrac <$> choose @Float (-1, 0)
-    ]-}
-  {-
-   e.g.: offsetFrom = 2 hours, numSubperiods = 3
-      => offsetTo = 8 hours,
-         subperiodOffsets = [2+0*2=(1+0)*2=2 h, 2+1*2=(1+1)*2=4 h, 2+2*2=(1+2)*2=6 h, 2+3*2=(1+3)*2=8 h]
-   -}
-  let subperiodOffsets = map ((+ 1) >>> (* offsetFrom)) [0..numSubperiods]
-      subperiods = adjacentPairs subperiodOffsets
-
-      sortedTimes :: (Int, Int) -> Gen [LocalTime]
-      sortedTimes (from, to) = do
-        --arbitraryList <- arbitrary @(NonEmptyList (Gen Int))
-        --arbitraryInts <- sequence $ getNonEmpty arbitraryList
-        -- FIXME avoid values on the border!
-        arbitraryInts <- listOf1 $ choose (from, to)
-        return . fmap (flip addLocalTime now . secondsToNominalDiffTime . intToSeconds . negate) $ arbitraryInts
-  times <- concat <$> traverse sortedTimes subperiods
+  arbitraryOffsets <- vectorOf numSubperiods (choose (offsetFrom, offsetTo))
+  let times = flip addLocalTime now . secondsToNominalDiffTime . intToSeconds . negate <$> arbitraryOffsets
 
   return
     ( now

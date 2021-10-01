@@ -73,10 +73,22 @@ type Period = (OffsetFrom, OffsetTo)
 -- |
 -- |__Assumption__: @times@ is sorted in the ascending order (oldest to newest).
 cleanup :: Period -> [LocalTime] -> LocalTime -> [LocalTime]
-cleanup period times now = leaveNewest . takeWhile (before now) $ times
+cleanup (PrettyTimeInterval from, PrettyTimeInterval to) times now
+  = consider . leaveNewest . takeWhile (before now) $ times
   where
+    numSubperiods = (subtract 1) . ceiling . nominalDiffTimeToSeconds $ to - from
+
+    -- Any of the input times here can be cleaned up.
+    consider times = outsideOfPeriod times ++ insidePeriod times
+      where
+        inside :: LocalTime -> Bool
+        inside time = time >= addLocalTime (-to) now && time <= addLocalTime (-from) now
+        outsideOfPeriod = filter (not . inside)
+        insidePeriod = leaveAtMost numSubperiods . filter inside
+
     before = flip (<=)
     leaveNewest = dropLast
+    leaveAtMost = drop
 
 -- |Returns the list without the last element.
 dropLast :: [a] -> [a]

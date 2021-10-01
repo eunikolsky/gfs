@@ -58,8 +58,11 @@ spec = do
             input = inputTimes ++ [newest]
             cleanedUp = cleanup range input now
 
-        in counterexample (describePeriod range now)
-          $ sort cleanedUp == inputTimes
+            actual = sort cleanedUp
+            expected = inputTimes
+            description = concat ["Actual cleaned up: ", show actual, "; expected: ", show inputTimes]
+        in counterexample (intercalate "\n" [describePeriod range now, description])
+          $ actual == expected
 
     it "leaves as many times as there are subperiods with times" $ do
       property $ forAll arbitraryInputWithinRange $ \(now, newest, range, numSubperiods, times) ->
@@ -67,10 +70,13 @@ spec = do
             -- we always have to separately add a newest time that is never removed
             input = inputTimes ++ [newest]
             rest = input \\ (cleanup range input now ++ [newest])
-        in counterexample (describePeriod range now)
+
+            numberOfItems = concat ["Actual left items: ", show (length rest), "; expected: ", show numSubperiods]
+        in counterexample (intercalate "\n" [describePeriod range now, numberOfItems])
           $ length rest == numSubperiods
 
 -- |Describes @period@ as times relative to @now@.
+describePeriod :: Period -> LocalTime -> String
 describePeriod (PrettyTimeInterval offsetFrom, PrettyTimeInterval offsetTo) now
   = concat ["Period: from ", from, " to ", to]
   where
