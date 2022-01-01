@@ -59,7 +59,8 @@ arbitraryInputWithinRange = do
   -- TODO a fixed date is easier for development; start from a random value and shrink towards 2000-01-01?
   let now = LocalTime (fromGregorian 2000 01 01) midnight
       newest = addLocalTime (secondsToNominalDiffTime (-1 :: Pico)) now
-  offsetFrom <- chooseInt (hours 1, weeks 1)
+  --offsetFrom <- chooseInt (hours 1, weeks 1)
+  offsetFrom <- hours <$> chooseInt (1, 24)
   numSubperiods <- chooseInt (1, 10)
 
   -- offsetTo is always bigger than offsetFrom
