@@ -52,9 +52,10 @@ arbitraryInputOutsideOfRange = do
 
 type NumSubperiods = Int
 
--- |Generates an arbitrary input for `cleanup` such that there is at least
--- |one time in each of the subperiods of the period.
+-- |Generates an arbitrary input for `cleanup` such that the number of times
+-- |matches the number of subperiods in the period.
 arbitraryInputWithinRange :: Gen (Now, Newest, Period, NumSubperiods, Times)
+-- TODO join `Period` and `NumSubperiods` into a logically single type?
 arbitraryInputWithinRange = do
   -- TODO a fixed date is easier for development; start from a random value and shrink towards 2000-01-01?
   let now = LocalTime (fromGregorian 2000 01 01) midnight
