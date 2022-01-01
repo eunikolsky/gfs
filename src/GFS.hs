@@ -93,7 +93,7 @@ cleanup (PrettyTimeInterval from, PrettyTimeInterval to) times now
 -- |Returns the list without the last element.
 dropLast :: [a] -> [a]
 dropLast [] = []
-dropLast xs = take (length xs - 1) xs
+dropLast xs = init xs
 
 -- oldest remaining time so far and a list of dropped times
 type CleanupState = (LocalTime, [LocalTime])
