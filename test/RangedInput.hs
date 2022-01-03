@@ -38,10 +38,10 @@ arbitraryNow f = do
 arbitraryInputOutsideOfRange :: Gen (WithNow (Period, Times))
 arbitraryInputOutsideOfRange = arbitraryNow $ \now -> do
   offsetFrom <- chooseSecond (hours 1, weeks 1)
-  offsetToMultiplier <- choose @Float (1.1, 4.9)
+  numSubperiods <- choose @Float (1.1, 4.9)
 
   -- offsetTo is always bigger than offsetFrom
-  let offsetTo = offsetFrom * realToFrac offsetToMultiplier
+  let offsetTo = offsetFrom * realToFrac (numSubperiods + 1)
 
   -- range: [now - offsetTo * 2; now - offsetTo] ∪ [now - offsetFrom; now]
   timeOffset <- oneof
