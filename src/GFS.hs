@@ -4,6 +4,7 @@ module GFS
     , cleanup
     ) where
 
+import Control.Monad.Writer.Strict
 import Data.List
 import Data.Maybe
 import Data.Time.Clock
@@ -73,18 +74,54 @@ type Period = (OffsetFrom, OffsetTo)
 -- |
 -- |__Assumption__: @times@ is sorted in the ascending order (oldest to newest).
 cleanup :: Period -> [LocalTime] -> LocalTime -> [LocalTime]
+type L = Writer [String]
 cleanup (PrettyTimeInterval from, PrettyTimeInterval to) times now
-  = consider . leaveNewest . takeWhile (before now) $ times
+  = fst $ runWriter
+    (consider . leaveNewest . takeWhile (before now) $ times)
   where
-    numSubperiods = (subtract 1) . ceiling . nominalDiffTimeToSeconds $ to - from
+    numSubperiods :: Int
+    numSubperiods = ceiling . nominalDiffTimeToSeconds $ (to - from) / from
+
+    subperiods = adjacentPairs . reverse $ map (\index -> (addLocalTime (-from * (fromIntegral index + 1)) now)) [0..numSubperiods]
 
     -- Any of the input times here can be cleaned up.
-    consider times = outsideOfPeriod times ++ insidePeriod times
+    consider :: [LocalTime] -> L [LocalTime]
+    consider times = do
+      tell [
+        "numSubperiods " <> show numSubperiods,
+        "subperiods " <> show subperiods,
+        "considering " <> show times]
+      inside <- insidePeriod times
+      pure $ outsideOfPeriod times ++ inside
+
       where
         inside :: LocalTime -> Bool
         inside time = time >= addLocalTime (-to) now && time <= addLocalTime (-from) now
         outsideOfPeriod = filter (not . inside)
-        insidePeriod = leaveAtMost numSubperiods . filter inside
+        insidePeriod :: [LocalTime] -> L [LocalTime]
+        insidePeriod times = do
+          filtered <- log "filter" (filter inside) times
+          grouped <- log "groupBy" (groupBy withinOneSubperiod) filtered
+          exceptNewest <- log "not newest" (map leaveNewest) grouped
+          log "concat" concat exceptNewest
+
+        -- filter :: (a -> Bool) -> [a] -> [a]
+        -- filter inside :: [LocalTime] -> [LocalTime]
+        -- log (filter inside) :: [LocalTime] -> L [LocalTime]
+        -- groupBy x :: [LocalTime] -> [[LocalTime]]
+        -- log (groupBy x) :: [LocalTime] -> L [[LocalTime]]
+
+        log :: (Show a, Show b) => String -> (a -> b) -> a -> L b
+        log n f x = do
+          let r = f x
+          tell [n <> ": " <> show x <> " => " <> show r]
+          pure r
+
+        withinOneSubperiod :: LocalTime -> LocalTime -> Bool
+        withinOneSubperiod t0 t1 = any (bothInsideSubperiod t0 t1) subperiods
+
+        bothInsideSubperiod :: LocalTime -> LocalTime -> (LocalTime, LocalTime) -> Bool
+        bothInsideSubperiod t0 t1 (from, to) = (t0 >= from && t0 <= to) && (t1 >= from && t1 <= to)
 
     before = flip (<=)
     leaveNewest = dropLast
@@ -94,6 +131,12 @@ cleanup (PrettyTimeInterval from, PrettyTimeInterval to) times now
 dropLast :: [a] -> [a]
 dropLast [] = []
 dropLast xs = init xs
+
+-- FIXME deduplicate
+-- |Returns a list of adjacent pairs from the source list.
+adjacentPairs :: [a] -> [(a, a)]
+adjacentPairs [] = []
+adjacentPairs xs = zip xs (tail xs)
 
 -- oldest remaining time so far and a list of dropped times
 type CleanupState = (LocalTime, [LocalTime])

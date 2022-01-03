@@ -64,7 +64,7 @@ spec = do
         in counterexample (intercalate "\n" [describePeriod range now, description])
           $ actual == expected
 
-    it "leaves as many times as there are subperiods with times" $ do
+    it "leaves no more times than there are subperiods with times" $ do
       property $ forAll arbitraryInputWithinRange $ \(now, newest, range, numSubperiods, times) ->
         let inputTimes = getSorted times
             -- we always have to separately add a newest time that is never removed
@@ -73,7 +73,18 @@ spec = do
 
             numberOfItems = concat ["Actual left items: ", show (length rest), "; expected: ", show numSubperiods]
         in counterexample (intercalate "\n" [describePeriod range now, numberOfItems])
-          $ length rest == numSubperiods
+          -- the reason for `<=` instead of `==` is there may not be a single time
+          -- within every subperiod
+          $ length rest <= numSubperiods
+
+    it "leaves only the newest time in every subperiod" $ do
+      property $ forAll arbitraryInputWithinRangeSubperiods $ \(now, newest, range, newestTimes, times) ->
+        let inputTimes = getSorted times
+            input = inputTimes ++ [newest]
+            rest = input \\ (cleanup range input now ++ [newest])
+
+            description = concat ["Actual left: ", show rest, "; expected: ", show newestTimes]
+        in counterexample description $ rest == getSorted newestTimes
 
 -- |Describes @period@ as times relative to @now@.
 describePeriod :: Period -> LocalTime -> String
