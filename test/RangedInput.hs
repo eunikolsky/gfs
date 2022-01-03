@@ -92,8 +92,8 @@ arbitraryInputWithinRangeSubperiods :: Gen (Now, Newest, Period, NewestTimes, Ti
 arbitraryInputWithinRangeSubperiods = do
   let now = LocalTime (fromGregorian 2000 01 01) midnight
       newest = addLocalTime (secondsToNominalDiffTime (-1 :: Pico)) now
-  offsetFrom <- hours <$> choose (1, 24)
-  numSubperiods <- choose (1, 10)
+  offsetFrom <- pure $ hours 2 -- <$> choose (1, 24)
+  numSubperiods <- pure 5 -- choose (1, 10)
 
   let offsetTo = offsetFrom * (numSubperiods + 1)
       generateOffsets :: Int -> Gen (Int, [Int])
@@ -102,7 +102,7 @@ arbitraryInputWithinRangeSubperiods = do
         -- that's where the extra `+ 1` comes from
         let (subperiodFrom, subperiodTo) = (offsetFrom * (numSubperiod + 1), offsetFrom * (numSubperiod + 1 + 1))
         newestOffset <- choose (subperiodFrom, subperiodTo)
-        numOffsets <- chooseInt (1, 10)
+        numOffsets <- chooseInt (1, 2)
         offsets <- vectorOf numOffsets $ choose (newestOffset, subperiodTo)
         pure (newestOffset, offsets)
 

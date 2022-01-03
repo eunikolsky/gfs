@@ -83,7 +83,7 @@ spec = do
             input = inputTimes ++ [newest]
             rest = input \\ (cleanup range input now ++ [newest])
 
-            description = concat ["Actual left: ", show rest, "; expected: ", show newestTimes]
+            description = concat ["Actual left: ", show rest, "; expected: ", show $ getSorted newestTimes]
         in counterexample description $ rest == getSorted newestTimes
 
 -- |Describes @period@ as times relative to @now@.

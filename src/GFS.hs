@@ -121,7 +121,8 @@ cleanup (PrettyTimeInterval from, PrettyTimeInterval to) times now
         withinOneSubperiod t0 t1 = any (bothInsideSubperiod t0 t1) subperiods
 
         bothInsideSubperiod :: LocalTime -> LocalTime -> (LocalTime, LocalTime) -> Bool
-        bothInsideSubperiod t0 t1 (from, to) = (t0 >= from && t0 <= to) && (t1 >= from && t1 <= to)
+        bothInsideSubperiod t0 t1 subperiod = t0 `insideSubperiod` subperiod && t1 `insideSubperiod` subperiod
+          where t `insideSubperiod` (from, to) = t >= from && t < to
 
     before = flip (<=)
     leaveNewest = dropLast
