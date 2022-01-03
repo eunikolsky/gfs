@@ -93,20 +93,29 @@ arbitraryInputWithinRangeSubperiods = do
   let now = LocalTime (fromGregorian 2000 01 01) midnight
       newest = addLocalTime (secondsToNominalDiffTime (-1 :: Pico)) now
   offsetFrom <- pure $ hours 2 -- <$> choose (1, 24)
-  numSubperiods <- pure 5 -- choose (1, 10)
+  numSubperiods <- pure (1.5 :: Float) -- choose (1, 10)
 
-  let offsetTo = offsetFrom * (numSubperiods + 1)
-      generateOffsets :: Int -> Gen (Int, [Int])
-      generateOffsets numSubperiod = do
+  let offsetTo = ceiling $ fromIntegral offsetFrom * (numSubperiods + 1)
+
+      -- |Generates a list of integer values starting at `0` and ending with the given values.
+      -- |E.g. `floatList 3.5 = [0.0, 1.0, 2.0, 3.0, 3.5]`.
+      floatList :: Float -> [Float]
+      floatList x = avoidDuplicateX $ (fromIntegral <$> [0,1..floor x]) ++ [x]
+        -- for a case when `x` is an integral value (`x.0`)
+        where avoidDuplicateX = nub
+
+      generateOffsets :: (Float, Float) -> Gen (Int, [Int])
+      generateOffsets (numSubperiodFrom, numSubperiodTo) = do
         -- note: both offsets are shifted relative to `offsetFrom` in order not to start from `now`,
         -- that's where the extra `+ 1` comes from
-        let (subperiodFrom, subperiodTo) = (offsetFrom * (numSubperiod + 1), offsetFrom * (numSubperiod + 1 + 1))
+        let subperiodFrom = ceiling $ fromIntegral offsetFrom * (numSubperiodFrom + 1)
+            subperiodTo = ceiling $ fromIntegral offsetFrom * (numSubperiodTo + 1)
         newestOffset <- choose (subperiodFrom + 1, subperiodTo)
         numOffsets <- chooseInt (1, 2)
         offsets <- vectorOf numOffsets $ choose (newestOffset, subperiodTo)
         pure (newestOffset, offsets)
 
-  generatedOffsets <- traverse generateOffsets [0..numSubperiods-1]
+  generatedOffsets <- traverse generateOffsets . adjacentPairs $ floatList numSubperiods
   let (newestOffsets, offsets) = sequence $ (\(newestTime, times) -> ([newestTime], times)) <$> generatedOffsets
       newestTimes = flip addLocalTime now . secondsToNominalDiffTime . intToSeconds . negate <$> newestOffsets
       times = flip addLocalTime now . secondsToNominalDiffTime . intToSeconds . negate <$> concat offsets
