@@ -92,8 +92,8 @@ arbitraryInputWithinRangeSubperiods :: Gen (Now, Newest, Period, NewestTimes, Ti
 arbitraryInputWithinRangeSubperiods = do
   let now = LocalTime (fromGregorian 2000 01 01) midnight
       newest = addLocalTime (secondsToNominalDiffTime (-1 :: Pico)) now
-  offsetFrom <- pure $ hours 2 -- <$> choose (1, 24)
-  numSubperiods <- pure (1.5 :: Float) -- choose (1, 10)
+  offsetFrom <- hours <$> choose (1, 24)
+  numSubperiods <- choose (1.0, 10.0)
 
   let offsetTo = ceiling $ fromIntegral offsetFrom * (numSubperiods + 1)
 
