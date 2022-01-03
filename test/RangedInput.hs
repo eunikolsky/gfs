@@ -101,7 +101,7 @@ arbitraryInputWithinRangeSubperiods = do
         -- note: both offsets are shifted relative to `offsetFrom` in order not to start from `now`,
         -- that's where the extra `+ 1` comes from
         let (subperiodFrom, subperiodTo) = (offsetFrom * (numSubperiod + 1), offsetFrom * (numSubperiod + 1 + 1))
-        newestOffset <- choose (subperiodFrom, subperiodTo)
+        newestOffset <- choose (subperiodFrom, subperiodTo - 1)
         numOffsets <- chooseInt (1, 2)
         offsets <- vectorOf numOffsets $ choose (newestOffset, subperiodTo)
         pure (newestOffset, offsets)
