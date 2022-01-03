@@ -37,22 +37,22 @@ arbitraryNow f = do
 -- |the generated period (within certain bounds).
 arbitraryInputOutsideOfRange :: Gen (WithNow (Period, Times))
 arbitraryInputOutsideOfRange = arbitraryNow $ \now -> do
-  offsetFrom <- chooseSecond (hours 1, weeks 1)
+  offsetFrom <- hours <$> chooseInt (1, 24) -- chooseSecond (hours 1, weeks 1)
   numSubperiods <- choose @Float (1.1, 4.9)
 
   -- offsetTo is always bigger than offsetFrom
-  let offsetTo = offsetFrom * realToFrac (numSubperiods + 1)
+  let offsetTo = ceiling $ fromIntegral offsetFrom * (numSubperiods + 1)
 
   -- range: [now - offsetTo * 2; now - offsetTo] ∪ [now - offsetFrom; now]
-  timeOffset <- oneof
-    [ (* offsetTo) . realToFrac <$> choose @Float (-2, -1)
-    , (* offsetFrom) . realToFrac <$> choose @Float (-1, 0)
+  timeOffset <- ceiling <$> oneof
+    [ (* (fromIntegral offsetTo)) <$> choose @Float (1.0, 2.0)
+    , (* (fromIntegral offsetFrom)) <$> choose @Float (0.0, 1.0)
     ]
-  let time = addLocalTime (secondsToNominalDiffTime timeOffset) now
+  let time = flip addLocalTime now . secondsToNominalDiffTime . intToSeconds . negate $ timeOffset
 
   return
-    ( ( PrettyTimeInterval $ secondsToNominalDiffTime offsetFrom
-      , PrettyTimeInterval $ secondsToNominalDiffTime offsetTo
+    ( ( PrettyTimeInterval . secondsToNominalDiffTime . intToSeconds $ offsetFrom
+      , PrettyTimeInterval . secondsToNominalDiffTime . intToSeconds $ offsetTo
       )
     , (Sorted [time])
     )
