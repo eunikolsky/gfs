@@ -43,18 +43,18 @@ arbitraryInputOutsideOfRange = arbitraryNow $ \now -> do
   -- offsetTo is always bigger than offsetFrom
   let offsetTo = ceiling $ fromIntegral offsetFrom * (numSubperiods + 1)
 
-  -- range: [now - offsetTo * 2; now - offsetTo] ∪ [now - offsetFrom; now]
-  timeOffset <- ceiling <$> oneof
-    [ (* (fromIntegral offsetTo)) <$> choose @Float (1.0, 2.0)
-    , (* (fromIntegral offsetFrom)) <$> choose @Float (0.0, 1.0)
+  -- range: [now - offsetTo * 2; now - offsetTo) ∪ (now - offsetFrom; now]
+  timeOffsets <- listOf1 $ ceiling <$> oneof
+    [ (* (fromIntegral offsetTo)) <$> choose @Float (1.001, 2.0)
+    , (* (fromIntegral offsetFrom)) <$> choose @Float (0.0, 0.999)
     ]
-  let time = flip addLocalTime now . secondsToNominalDiffTime . intToSeconds . negate $ timeOffset
+  let times = flip addLocalTime now . secondsToNominalDiffTime . intToSeconds . negate <$> timeOffsets
 
   return
     ( ( PrettyTimeInterval . secondsToNominalDiffTime . intToSeconds $ offsetFrom
       , PrettyTimeInterval . secondsToNominalDiffTime . intToSeconds $ offsetTo
       )
-    , (Sorted [time])
+    , (Sorted $ sort times)
     )
 
 type NumSubperiods = Int
