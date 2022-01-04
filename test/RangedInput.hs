@@ -23,6 +23,8 @@ type Times = SortedList LocalTime
 
 type WithNow a = (Now, Newest, a)
 
+type BaseTestData a = WithNow (Period, Times, a)
+
 arbitraryNow :: (Now -> Gen a) -> Gen (WithNow a)
 arbitraryNow f = do
   -- TODO a fixed date is easier for development; start from a random value and shrink towards 2000-01-01?
@@ -33,10 +35,23 @@ arbitraryNow f = do
 
   pure (now, newest, x)
 
+arbitraryBaseTestData :: (Now -> Gen (Int, Int, [Int], a)) -> Gen (BaseTestData a)
+arbitraryBaseTestData gen = arbitraryNow $ \now -> do
+  (offsetFrom, offsetTo, offsets, x) <- gen now
+  let times = flip addLocalTime now . secondsToNominalDiffTime . intToSeconds . negate <$> offsets
+
+  pure
+    ( ( PrettyTimeInterval . secondsToNominalDiffTime . intToSeconds $ offsetFrom
+      , PrettyTimeInterval . secondsToNominalDiffTime . intToSeconds $ offsetTo
+      )
+    , (Sorted $ sort times)
+    , x
+    )
+
 -- |Generates an arbitrary input for `cleanup` such that the times are outside
 -- |the generated period (within certain bounds).
-arbitraryInputOutsideOfRange :: Gen (WithNow (Period, Times))
-arbitraryInputOutsideOfRange = arbitraryNow $ \now -> do
+arbitraryInputOutsideOfRange :: Gen (BaseTestData ())
+arbitraryInputOutsideOfRange = arbitraryBaseTestData $ const $ do
   offsetFrom <- hours <$> chooseInt (1, 24) -- chooseSecond (hours 1, weeks 1)
   numSubperiods <- choose @Float (1.1, 4.9)
 
@@ -48,22 +63,16 @@ arbitraryInputOutsideOfRange = arbitraryNow $ \now -> do
     [ (* (fromIntegral offsetTo)) <$> choose @Float (1.001, 2.0)
     , (* (fromIntegral offsetFrom)) <$> choose @Float (0.0, 0.999)
     ]
-  let times = flip addLocalTime now . secondsToNominalDiffTime . intToSeconds . negate <$> timeOffsets
 
-  return
-    ( ( PrettyTimeInterval . secondsToNominalDiffTime . intToSeconds $ offsetFrom
-      , PrettyTimeInterval . secondsToNominalDiffTime . intToSeconds $ offsetTo
-      )
-    , (Sorted $ sort times)
-    )
+  pure (offsetFrom, offsetTo, timeOffsets, ())
 
 type NumSubperiods = Int
 
 -- |Generates an arbitrary input for `cleanup` such that the number of times
 -- |matches the number of subperiods in the period.
-arbitraryInputWithinRange :: Gen (WithNow (Period, NumSubperiods, Times))
+arbitraryInputWithinRange :: Gen (BaseTestData NumSubperiods)
 -- TODO join `Period` and `NumSubperiods` into a logically single type?
-arbitraryInputWithinRange = arbitraryNow $ \now -> do
+arbitraryInputWithinRange = arbitraryBaseTestData $ const $ do
   --offsetFrom <- chooseInt (hours 1, weeks 1)
   offsetFrom <- hours <$> chooseInt (1, 24)
   numSubperiods <- chooseInt (1, 10)
@@ -73,15 +82,8 @@ arbitraryInputWithinRange = arbitraryNow $ \now -> do
 
   arbitraryOffsets <- vectorOf numSubperiods (choose (offsetFrom, offsetTo))
   -- TODO add base `offsetFrom`? (see `arbitraryInputWithinRangeSubperiods`)
-  let times = flip addLocalTime now . secondsToNominalDiffTime . intToSeconds . negate <$> arbitraryOffsets
 
-  return
-    ( ( PrettyTimeInterval . secondsToNominalDiffTime . intToSeconds $ offsetFrom
-      , PrettyTimeInterval . secondsToNominalDiffTime . intToSeconds $ offsetTo
-      )
-    , numSubperiods
-    , (Sorted $ sort times)
-    )
+  pure (offsetFrom, offsetTo, arbitraryOffsets, numSubperiods)
 
 type NewestTimes = Times
 
@@ -90,8 +92,8 @@ type NewestTimes = Times
 -- |for the ease of writing tests.
 -- Sample output:
 -- `(2000-01-01 00:00:00,1999-12-31 23:59:59,(1 d,5 d),Sorted {getSorted = [1999-12-27 15:53:04,1999-12-28 00:50:13,1999-12-29 20:36:03,1999-12-30 14:32:27]},Sorted {getSorted = [1999-12-27 15:53:04,1999-12-27 16:53:56,1999-12-27 18:52:44,1999-12-27 19:24:03,1999-12-27 21:07:00,1999-12-27 22:50:25,1999-12-28 00:50:13,1999-12-28 00:55:15,1999-12-28 02:22:39,1999-12-28 08:52:45,1999-12-28 13:19:33,1999-12-29 20:36:03,1999-12-29 23:19:06,1999-12-30 14:32:27,1999-12-30 14:55:48,1999-12-30 17:32:40,1999-12-30 18:40:20,1999-12-30 19:25:54,1999-12-30 19:58:30,1999-12-30 21:17:13,1999-12-30 23:45:06]})`
-arbitraryInputWithinRangeSubperiods :: Gen (WithNow (Period, NewestTimes, Times))
-arbitraryInputWithinRangeSubperiods = arbitraryNow $ \now -> do
+arbitraryInputWithinRangeSubperiods :: Gen (BaseTestData NewestTimes)
+arbitraryInputWithinRangeSubperiods = arbitraryBaseTestData $ \now -> do
   offsetFrom <- hours <$> choose (1, 24)
   numSubperiods <- choose (1.0, 10.0)
 
@@ -118,15 +120,8 @@ arbitraryInputWithinRangeSubperiods = arbitraryNow $ \now -> do
   generatedOffsets <- traverse generateOffsets . adjacentPairs $ floatList numSubperiods
   let (newestOffsets, offsets) = sequence $ (\(newestTime, times) -> ([newestTime], times)) <$> generatedOffsets
       newestTimes = flip addLocalTime now . secondsToNominalDiffTime . intToSeconds . negate <$> newestOffsets
-      times = flip addLocalTime now . secondsToNominalDiffTime . intToSeconds . negate <$> concat offsets
 
-  pure
-    ( ( PrettyTimeInterval . secondsToNominalDiffTime . intToSeconds $ offsetFrom
-      , PrettyTimeInterval . secondsToNominalDiffTime . intToSeconds $ offsetTo
-      )
-    , (Sorted $ sort newestTimes)
-    , (Sorted . sort $ times ++ newestTimes)
-    )
+  pure (offsetFrom, offsetTo, concat offsets ++ newestOffsets, (Sorted $ sort newestTimes))
 
 intToSeconds :: Int -> Pico
 intToSeconds = MkFixed . (* (resolution (0 :: Pico))) . fromIntegral

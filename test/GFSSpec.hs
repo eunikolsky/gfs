@@ -52,7 +52,7 @@ spec = do
     --it "cleans up such that there are no remaining elements closer than the period" $ do
 
     it "cleans up items outside of the specified range (with exceptions)" $ do
-      property $ forAll arbitraryInputOutsideOfRange $ \(now, newest, (range, times)) ->
+      property $ forAll arbitraryInputOutsideOfRange $ \(now, newest, (range, times, _)) ->
         let inputTimes = getSorted times
             -- we always have to separately add a newest time that is never removed
             input = inputTimes ++ [newest]
@@ -65,7 +65,7 @@ spec = do
           $ actual == expected
 
     it "leaves no more times than there are subperiods with times" $ do
-      property $ forAll arbitraryInputWithinRange $ \(now, newest, (range, numSubperiods, times)) ->
+      property $ forAll arbitraryInputWithinRange $ \(now, newest, (range, times, numSubperiods)) ->
         let inputTimes = getSorted times
             -- we always have to separately add a newest time that is never removed
             input = inputTimes ++ [newest]
@@ -78,7 +78,7 @@ spec = do
           $ length rest <= numSubperiods
 
     it "leaves only the newest time in every subperiod" $ do
-      property $ forAll arbitraryInputWithinRangeSubperiods $ \(now, newest, (range, newestTimes, times)) ->
+      property $ forAll arbitraryInputWithinRangeSubperiods $ \(now, newest, (range, times, newestTimes)) ->
         let inputTimes = getSorted times
             input = inputTimes ++ [newest]
             rest = input \\ (cleanup range input now ++ [newest])
