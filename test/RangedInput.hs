@@ -6,6 +6,7 @@ import ArbitraryLocalTime
 import GFS
 
 import Control.Arrow ((>>>))
+import Data.Coerce (coerce)
 import Data.Fixed
 import Data.List
 import Data.Time.Calendar
@@ -23,7 +24,7 @@ type Times = SortedList LocalTime
 
 type WithNow a = (Now, Newest, a)
 
-type BaseTestData a = WithNow (Period, Times, a)
+type BaseTestData = WithNow (Period, Times, NumSubperiods, NewestTimes)
 
 arbitraryNow :: (Now -> Gen a) -> Gen (WithNow a)
 arbitraryNow f = do
@@ -35,55 +36,54 @@ arbitraryNow f = do
 
   pure (now, newest, x)
 
-arbitraryBaseTestData :: (Now -> Gen (Int, Int, [Int], a)) -> Gen (BaseTestData a)
-arbitraryBaseTestData gen = arbitraryNow $ \now -> do
-  (offsetFrom, offsetTo, offsets, x) <- gen now
-  let times = flip addLocalTime now . secondsToNominalDiffTime . intToSeconds . negate <$> offsets
+newtype Offset = Offset Int
+newtype NewestOffset = NewestOffset Int
+
+arbitraryBaseTestData :: Gen NumSubperiods -> (Int -> Int -> NumSubperiods -> Gen ([Offset], [NewestOffset])) -> Gen BaseTestData
+arbitraryBaseTestData genNumSubperiods genOffsets = arbitraryNow $ \now -> do
+  offsetFrom <- hours <$> chooseInt (1, 24) -- chooseSecond (hours 1, weeks 1)
+  numSubperiods <- genNumSubperiods
+  -- offsetTo is always bigger than offsetFrom
+  let offsetTo = ceiling $ fromIntegral offsetFrom * (numSubperiods + 1)
+
+  (offsets, newestOffsets) <- genOffsets offsetFrom offsetTo numSubperiods
+
+  let times = flip addLocalTime now . secondsToNominalDiffTime . intToSeconds . negate <$> coerce offsets
+      newestTimes = flip addLocalTime now . secondsToNominalDiffTime . intToSeconds . negate <$> coerce newestOffsets
 
   pure
     ( ( PrettyTimeInterval . secondsToNominalDiffTime . intToSeconds $ offsetFrom
       , PrettyTimeInterval . secondsToNominalDiffTime . intToSeconds $ offsetTo
       )
     , (Sorted $ sort times)
-    , x
+    , numSubperiods
+    , (Sorted $ sort newestTimes)
     )
 
 -- |Generates an arbitrary input for `cleanup` such that the times are outside
 -- |the generated period (within certain bounds).
-arbitraryInputOutsideOfRange :: Gen (BaseTestData ())
-arbitraryInputOutsideOfRange = arbitraryBaseTestData $ const $ do
-  offsetFrom <- hours <$> chooseInt (1, 24) -- chooseSecond (hours 1, weeks 1)
-  numSubperiods <- choose @Float (1.1, 4.9)
+arbitraryInputOutsideOfRange :: Gen BaseTestData
+arbitraryInputOutsideOfRange = arbitraryBaseTestData
+  (choose @Float (1.1, 4.9))
+  $ \offsetFrom offsetTo _ -> do
+    -- range: [now - offsetTo * 2; now - offsetTo) ∪ (now - offsetFrom; now]
+    offsets <- listOf1 $ ceiling @_ @Int <$> oneof
+      [ (* (fromIntegral offsetTo)) <$> choose @Float (1.001, 2.0)
+      , (* (fromIntegral offsetFrom)) <$> choose @Float (0.0, 0.999)
+      ]
+    pure (coerce offsets, [])
 
-  -- offsetTo is always bigger than offsetFrom
-  let offsetTo = ceiling $ fromIntegral offsetFrom * (numSubperiods + 1)
-
-  -- range: [now - offsetTo * 2; now - offsetTo) ∪ (now - offsetFrom; now]
-  timeOffsets <- listOf1 $ ceiling <$> oneof
-    [ (* (fromIntegral offsetTo)) <$> choose @Float (1.001, 2.0)
-    , (* (fromIntegral offsetFrom)) <$> choose @Float (0.0, 0.999)
-    ]
-
-  pure (offsetFrom, offsetTo, timeOffsets, ())
-
-type NumSubperiods = Int
+type NumSubperiods = Float
 
 -- |Generates an arbitrary input for `cleanup` such that the number of times
 -- |matches the number of subperiods in the period.
-arbitraryInputWithinRange :: Gen (BaseTestData NumSubperiods)
+arbitraryInputWithinRange :: Gen BaseTestData
 -- TODO join `Period` and `NumSubperiods` into a logically single type?
-arbitraryInputWithinRange = arbitraryBaseTestData $ const $ do
-  --offsetFrom <- chooseInt (hours 1, weeks 1)
-  offsetFrom <- hours <$> chooseInt (1, 24)
-  numSubperiods <- chooseInt (1, 10)
-
-  -- offsetTo is always bigger than offsetFrom
-  let offsetTo = offsetFrom * (numSubperiods + 1)
-
-  arbitraryOffsets <- vectorOf numSubperiods (choose (offsetFrom, offsetTo))
-  -- TODO add base `offsetFrom`? (see `arbitraryInputWithinRangeSubperiods`)
-
-  pure (offsetFrom, offsetTo, arbitraryOffsets, numSubperiods)
+arbitraryInputWithinRange = arbitraryBaseTestData
+  (fromIntegral <$> chooseInt (1, 10))
+  $ \offsetFrom offsetTo numSubperiods -> do
+    offsets <- vectorOf (ceiling numSubperiods) (choose (offsetFrom, offsetTo))
+    pure (coerce offsets, [])
 
 type NewestTimes = Times
 
@@ -92,36 +92,26 @@ type NewestTimes = Times
 -- |for the ease of writing tests.
 -- Sample output:
 -- `(2000-01-01 00:00:00,1999-12-31 23:59:59,(1 d,5 d),Sorted {getSorted = [1999-12-27 15:53:04,1999-12-28 00:50:13,1999-12-29 20:36:03,1999-12-30 14:32:27]},Sorted {getSorted = [1999-12-27 15:53:04,1999-12-27 16:53:56,1999-12-27 18:52:44,1999-12-27 19:24:03,1999-12-27 21:07:00,1999-12-27 22:50:25,1999-12-28 00:50:13,1999-12-28 00:55:15,1999-12-28 02:22:39,1999-12-28 08:52:45,1999-12-28 13:19:33,1999-12-29 20:36:03,1999-12-29 23:19:06,1999-12-30 14:32:27,1999-12-30 14:55:48,1999-12-30 17:32:40,1999-12-30 18:40:20,1999-12-30 19:25:54,1999-12-30 19:58:30,1999-12-30 21:17:13,1999-12-30 23:45:06]})`
-arbitraryInputWithinRangeSubperiods :: Gen (BaseTestData NewestTimes)
-arbitraryInputWithinRangeSubperiods = arbitraryBaseTestData $ \now -> do
-  offsetFrom <- hours <$> choose (1, 24)
-  numSubperiods <- choose (1.0, 10.0)
+arbitraryInputWithinRangeSubperiods :: Gen BaseTestData
+arbitraryInputWithinRangeSubperiods = arbitraryBaseTestData
+  (choose (1.0, 10.0))
+  $ \offsetFrom offsetTo numSubperiods -> do
+      generatedOffsets <- traverse (generateOffsets offsetFrom) . adjacentPairs $ floatList numSubperiods
+      let (newestOffsets, offsets) = sequence $ (\(newestTime, times) -> ([newestTime], times)) <$> generatedOffsets
 
-  let offsetTo = ceiling $ fromIntegral offsetFrom * (numSubperiods + 1)
+      pure (concat offsets ++ coerce newestOffsets, newestOffsets)
 
-      -- |Generates a list of integer values starting at `0` and ending with the given values.
-      -- |E.g. `floatList 3.5 = [0.0, 1.0, 2.0, 3.0, 3.5]`.
-      floatList :: Float -> [Float]
-      floatList x = avoidDuplicateX $ (fromIntegral <$> [0,1..floor x]) ++ [x]
-        -- for a case when `x` is an integral value (`x.0`)
-        where avoidDuplicateX = nub
-
-      generateOffsets :: (Float, Float) -> Gen (Int, [Int])
-      generateOffsets (numSubperiodFrom, numSubperiodTo) = do
-        -- note: both offsets are shifted relative to `offsetFrom` in order not to start from `now`,
-        -- that's where the extra `+ 1` comes from
-        let subperiodFrom = ceiling $ fromIntegral offsetFrom * (numSubperiodFrom + 1)
-            subperiodTo = ceiling $ fromIntegral offsetFrom * (numSubperiodTo + 1)
-        newestOffset <- choose (subperiodFrom + 1, subperiodTo)
-        numOffsets <- chooseInt (1, 2)
-        offsets <- vectorOf numOffsets $ choose (newestOffset, subperiodTo)
-        pure (newestOffset, offsets)
-
-  generatedOffsets <- traverse generateOffsets . adjacentPairs $ floatList numSubperiods
-  let (newestOffsets, offsets) = sequence $ (\(newestTime, times) -> ([newestTime], times)) <$> generatedOffsets
-      newestTimes = flip addLocalTime now . secondsToNominalDiffTime . intToSeconds . negate <$> newestOffsets
-
-  pure (offsetFrom, offsetTo, concat offsets ++ newestOffsets, (Sorted $ sort newestTimes))
+      where
+        generateOffsets :: Int -> (Float, Float) -> Gen (NewestOffset, [Offset])
+        generateOffsets offsetFrom (numSubperiodFrom, numSubperiodTo) = do
+          -- note: both offsets are shifted relative to `offsetFrom` in order not to start from `now`,
+          -- that's where the extra `+ 1` comes from
+          let subperiodFrom = ceiling $ fromIntegral offsetFrom * (numSubperiodFrom + 1)
+              subperiodTo = ceiling $ fromIntegral offsetFrom * (numSubperiodTo + 1)
+          newestOffset <- choose (subperiodFrom + 1, subperiodTo)
+          numOffsets <- chooseInt (1, 2)
+          offsets <- fmap (fmap Offset) . vectorOf numOffsets $ choose (newestOffset, subperiodTo)
+          pure (NewestOffset newestOffset, offsets)
 
 intToSeconds :: Int -> Pico
 intToSeconds = MkFixed . (* (resolution (0 :: Pico))) . fromIntegral
@@ -144,3 +134,10 @@ weeks = (* nominalWeek)
 adjacentPairs :: [a] -> [(a, a)]
 adjacentPairs [] = []
 adjacentPairs xs = zip xs (tail xs)
+
+-- |Generates a list of integer values starting at `0` and ending with the given values.
+-- |E.g. `floatList 3.5 = [0.0, 1.0, 2.0, 3.0, 3.5]`.
+floatList :: Float -> [Float]
+floatList x = avoidDuplicateX $ (fromIntegral <$> [0,1..floor x]) ++ [x]
+  -- for a case when `x` is an integral value (`x.0`)
+  where avoidDuplicateX = nub
