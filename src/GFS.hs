@@ -13,7 +13,8 @@ import Data.Time.LocalTime
 -- |Wrapper for @NominalDiffTime@ that @show@s the value in a human-friendlier
 -- |way than just seconds, e.g. "1 w 2 h 10 s".
 -- |Warning: seconds are always displayed as integers.
-newtype PrettyTimeInterval = PrettyTimeInterval NominalDiffTime
+newtype PrettyTimeInterval = PrettyTimeInterval
+  { unPrettyTimeInterval :: NominalDiffTime }
 
 instance Show PrettyTimeInterval where
   show (PrettyTimeInterval diffTime) = formatUnits

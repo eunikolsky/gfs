@@ -86,6 +86,28 @@ spec = do
             description = concat ["Actual left: ", show rest, "; expected: ", show $ getSorted newestTimes]
         in counterexample description $ rest == getSorted newestTimes
 
+    it "removes no more than two times when `now` shifts forward by `offsetFrom`" $ do
+      -- note: the max allowed removed times after the shift in this property
+      -- is two because the number of subperiods is a floating-point number;
+      -- if that number is an integer (i.e., all subperiods are of the same
+      -- duration), then the max allowed removed times is only one!
+      property $ forAll arbitraryInputWithinRangeSubperiods $ \(now, newest, (range, times, _, newestTimes)) ->
+        let inputTimes = getSorted times
+            input = inputTimes ++ [newest]
+            rest = input \\ cleanup range input now
+
+            shiftedNow = unPrettyTimeInterval (fst range) `addLocalTime` now
+            shiftedRest = rest \\ cleanup range rest shiftedNow
+
+            numExtraRemovedTimes = length rest - length shiftedRest
+            description = concat
+              [ "First rest (", show (length rest)
+              , "): ", show rest
+              , "; second rest (", show (length shiftedRest)
+              , "): ", show shiftedRest
+              ]
+        in counterexample description $ numExtraRemovedTimes <= 2
+
 -- |Describes @period@ as times relative to @now@.
 describePeriod :: Period -> LocalTime -> String
 describePeriod (PrettyTimeInterval offsetFrom, PrettyTimeInterval offsetTo) now
