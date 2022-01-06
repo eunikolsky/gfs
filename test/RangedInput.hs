@@ -1,3 +1,4 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 
 module RangedInput where
@@ -105,7 +106,7 @@ type NewestTimes = Times
 -- |for the ease of writing tests.
 -- Sample output:
 -- `(2000-01-01 00:00:00,1999-12-31 23:59:59,(1 d,5 d),Sorted {getSorted = [1999-12-27 15:53:04,1999-12-28 00:50:13,1999-12-29 20:36:03,1999-12-30 14:32:27]},Sorted {getSorted = [1999-12-27 15:53:04,1999-12-27 16:53:56,1999-12-27 18:52:44,1999-12-27 19:24:03,1999-12-27 21:07:00,1999-12-27 22:50:25,1999-12-28 00:50:13,1999-12-28 00:55:15,1999-12-28 02:22:39,1999-12-28 08:52:45,1999-12-28 13:19:33,1999-12-29 20:36:03,1999-12-29 23:19:06,1999-12-30 14:32:27,1999-12-30 14:55:48,1999-12-30 17:32:40,1999-12-30 18:40:20,1999-12-30 19:25:54,1999-12-30 19:58:30,1999-12-30 21:17:13,1999-12-30 23:45:06]})`
-arbitraryInputWithinRangeSubperiods :: NumSubperiods a => Gen (BaseTestData a)
+arbitraryInputWithinRangeSubperiods :: forall a. NumSubperiods a => Gen (BaseTestData a)
 arbitraryInputWithinRangeSubperiods = arbitraryBaseTestData
   choose_
   $ \offsetFrom offsetTo numSubperiods -> do
@@ -115,7 +116,7 @@ arbitraryInputWithinRangeSubperiods = arbitraryBaseTestData
       pure (concat offsets ++ coerce newestOffsets, newestOffsets)
 
       where
-        --generateOffsets :: Int -> (Float, Float) -> Gen (NewestOffset, [Offset])
+        generateOffsets :: Int -> (a, a) -> Gen (NewestOffset, [Offset])
         generateOffsets offsetFrom (numSubperiodFrom, numSubperiodTo) = do
           -- note: both offsets are shifted relative to `offsetFrom` in order not to start from `now`,
           -- that's where the extra `+ 1` comes from
