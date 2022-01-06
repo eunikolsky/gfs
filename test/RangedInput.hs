@@ -24,7 +24,22 @@ type Times = SortedList LocalTime
 
 type WithNow a = (Now, Newest, a)
 
-type BaseTestData = WithNow (Period, Times, NumSubperiods, NewestTimes)
+class Num a => NumSubperiods a where
+  ceiling_ :: a -> Int
+  choose_ :: Gen a
+  zeroList :: a -> [a]
+
+instance NumSubperiods Int where
+  ceiling_ = id
+  choose_ = chooseInt (1, 10)
+  zeroList x = [0..x]
+
+instance NumSubperiods Float where
+  ceiling_ = ceiling
+  choose_ = choose (1.0, 10.0)
+  zeroList = floatList
+
+type BaseTestData a = WithNow (Period, Times, a, NewestTimes)
 
 arbitraryNow :: (Now -> Gen a) -> Gen (WithNow a)
 arbitraryNow f = do
@@ -39,12 +54,12 @@ arbitraryNow f = do
 newtype Offset = Offset Int
 newtype NewestOffset = NewestOffset Int
 
-arbitraryBaseTestData :: Gen NumSubperiods -> (Int -> Int -> NumSubperiods -> Gen ([Offset], [NewestOffset])) -> Gen BaseTestData
+arbitraryBaseTestData :: NumSubperiods a => Gen a -> (Int -> Int -> a -> Gen ([Offset], [NewestOffset])) -> Gen (BaseTestData a)
 arbitraryBaseTestData genNumSubperiods genOffsets = arbitraryNow $ \now -> do
   offsetFrom <- hours <$> chooseInt (1, 24) -- chooseSecond (hours 1, weeks 1)
   numSubperiods <- genNumSubperiods
   -- offsetTo is always bigger than offsetFrom
-  let offsetTo = ceiling $ fromIntegral offsetFrom * (numSubperiods + 1)
+  let offsetTo = ceiling_ $ fromIntegral offsetFrom * (numSubperiods + 1)
 
   (offsets, newestOffsets) <- genOffsets offsetFrom offsetTo numSubperiods
 
@@ -62,7 +77,7 @@ arbitraryBaseTestData genNumSubperiods genOffsets = arbitraryNow $ \now -> do
 
 -- |Generates an arbitrary input for `cleanup` such that the times are outside
 -- |the generated period (within certain bounds).
-arbitraryInputOutsideOfRange :: Gen BaseTestData
+arbitraryInputOutsideOfRange :: Gen (BaseTestData Float)
 arbitraryInputOutsideOfRange = arbitraryBaseTestData
   (choose @Float (1.1, 4.9))
   $ \offsetFrom offsetTo _ -> do
@@ -73,16 +88,14 @@ arbitraryInputOutsideOfRange = arbitraryBaseTestData
       ]
     pure (coerce offsets, [])
 
-type NumSubperiods = Float
-
 -- |Generates an arbitrary input for `cleanup` such that the number of times
 -- |matches the number of subperiods in the period.
-arbitraryInputWithinRange :: Gen BaseTestData
+arbitraryInputWithinRange :: Gen (BaseTestData Int)
 -- TODO join `Period` and `NumSubperiods` into a logically single type?
 arbitraryInputWithinRange = arbitraryBaseTestData
-  (fromIntegral <$> chooseInt (1, 10))
+  (chooseInt (1, 10))
   $ \offsetFrom offsetTo numSubperiods -> do
-    offsets <- vectorOf (ceiling numSubperiods) (choose (offsetFrom, offsetTo))
+    offsets <- vectorOf numSubperiods (choose (offsetFrom, offsetTo))
     pure (coerce offsets, [])
 
 type NewestTimes = Times
@@ -92,22 +105,22 @@ type NewestTimes = Times
 -- |for the ease of writing tests.
 -- Sample output:
 -- `(2000-01-01 00:00:00,1999-12-31 23:59:59,(1 d,5 d),Sorted {getSorted = [1999-12-27 15:53:04,1999-12-28 00:50:13,1999-12-29 20:36:03,1999-12-30 14:32:27]},Sorted {getSorted = [1999-12-27 15:53:04,1999-12-27 16:53:56,1999-12-27 18:52:44,1999-12-27 19:24:03,1999-12-27 21:07:00,1999-12-27 22:50:25,1999-12-28 00:50:13,1999-12-28 00:55:15,1999-12-28 02:22:39,1999-12-28 08:52:45,1999-12-28 13:19:33,1999-12-29 20:36:03,1999-12-29 23:19:06,1999-12-30 14:32:27,1999-12-30 14:55:48,1999-12-30 17:32:40,1999-12-30 18:40:20,1999-12-30 19:25:54,1999-12-30 19:58:30,1999-12-30 21:17:13,1999-12-30 23:45:06]})`
-arbitraryInputWithinRangeSubperiods :: Gen BaseTestData
+arbitraryInputWithinRangeSubperiods :: NumSubperiods a => Gen (BaseTestData a)
 arbitraryInputWithinRangeSubperiods = arbitraryBaseTestData
-  (choose (1.0, 10.0))
+  choose_
   $ \offsetFrom offsetTo numSubperiods -> do
-      generatedOffsets <- traverse (generateOffsets offsetFrom) . adjacentPairs $ floatList numSubperiods
+      generatedOffsets <- traverse (generateOffsets offsetFrom) . adjacentPairs $ zeroList numSubperiods
       let (newestOffsets, offsets) = sequence $ (\(newestTime, times) -> ([newestTime], times)) <$> generatedOffsets
 
       pure (concat offsets ++ coerce newestOffsets, newestOffsets)
 
       where
-        generateOffsets :: Int -> (Float, Float) -> Gen (NewestOffset, [Offset])
+        --generateOffsets :: Int -> (Float, Float) -> Gen (NewestOffset, [Offset])
         generateOffsets offsetFrom (numSubperiodFrom, numSubperiodTo) = do
           -- note: both offsets are shifted relative to `offsetFrom` in order not to start from `now`,
           -- that's where the extra `+ 1` comes from
-          let subperiodFrom = ceiling $ fromIntegral offsetFrom * (numSubperiodFrom + 1)
-              subperiodTo = ceiling $ fromIntegral offsetFrom * (numSubperiodTo + 1)
+          let subperiodFrom = ceiling_ $ fromIntegral offsetFrom * (numSubperiodFrom + 1)
+              subperiodTo = ceiling_ $ fromIntegral offsetFrom * (numSubperiodTo + 1)
           newestOffset <- choose (subperiodFrom + 1, subperiodTo)
           numOffsets <- chooseInt (1, 2)
           offsets <- fmap (fmap Offset) . vectorOf numOffsets $ choose (newestOffset, subperiodTo)
