@@ -55,15 +55,15 @@ arbitraryNow f = do
 
   pure (now, newest, x)
 
-newtype Offset = Offset Int
+newtype Offset = Offset { unOffset :: Int }
 newtype NewestOffset = NewestOffset Int
 
-arbitraryBaseTestData :: NumSubperiods a => Gen a -> (Int -> Int -> a -> Gen ([Offset], [NewestOffset])) -> Gen (BaseTestData Identity a)
+arbitraryBaseTestData :: NumSubperiods a => Gen a -> (Offset -> Offset -> a -> Gen ([Offset], [NewestOffset])) -> Gen (BaseTestData Identity a)
 arbitraryBaseTestData genNumSubperiods genOffsets = arbitraryNow $ \now -> do
-  offsetFrom <- hours <$> chooseInt (1, 24) -- chooseSecond (hours 1, weeks 1)
+  offsetFrom <- Offset . hours <$> chooseInt (1, 24) -- chooseSecond (hours 1, weeks 1)
   numSubperiods <- genNumSubperiods
   -- offsetTo is always bigger than offsetFrom
-  let offsetTo = ceiling_ $ fromIntegral offsetFrom * (numSubperiods + 1)
+  let offsetTo = Offset . ceiling_ $ fromIntegral (unOffset offsetFrom) * (numSubperiods + 1)
 
   (offsets, newestOffsets) <- genOffsets offsetFrom offsetTo numSubperiods
 
@@ -72,8 +72,8 @@ arbitraryBaseTestData genNumSubperiods genOffsets = arbitraryNow $ \now -> do
 
   pure
     ( Identity (
-      ( PrettyTimeInterval . secondsToNominalDiffTime . intToSeconds $ offsetFrom
-      , PrettyTimeInterval . secondsToNominalDiffTime . intToSeconds $ offsetTo
+      ( PrettyTimeInterval . secondsToNominalDiffTime . intToSeconds . unOffset $ offsetFrom
+      , PrettyTimeInterval . secondsToNominalDiffTime . intToSeconds . unOffset $ offsetTo
       )
       , numSubperiods
       )
@@ -86,7 +86,7 @@ arbitraryBaseTestData genNumSubperiods genOffsets = arbitraryNow $ \now -> do
 arbitraryInputOutsideOfRange :: Gen (BaseTestData Identity Float)
 arbitraryInputOutsideOfRange = arbitraryBaseTestData
   (choose @Float (1.1, 4.9))
-  $ \offsetFrom offsetTo _ -> do
+  $ \(Offset offsetFrom) (Offset offsetTo) _ -> do
     -- range: [now - offsetTo * 2; now - offsetTo) ∪ (now - offsetFrom; now]
     offsets <- listOf1 $ ceiling @_ @Int <$> oneof
       [ (* (fromIntegral offsetTo)) <$> choose @Float (1.001, 2.0)
@@ -99,7 +99,7 @@ arbitraryInputOutsideOfRange = arbitraryBaseTestData
 arbitraryInputWithinRange :: Gen (BaseTestData Identity Int)
 arbitraryInputWithinRange = arbitraryBaseTestData
   (chooseInt (1, 10))
-  $ \offsetFrom offsetTo numSubperiods -> do
+  $ \(Offset offsetFrom) (Offset offsetTo) numSubperiods -> do
     offsets <- vectorOf numSubperiods (choose (offsetFrom, offsetTo))
     pure (coerce offsets, [])
 
@@ -113,15 +113,15 @@ type NewestTimes = Times
 arbitraryInputWithinRangeSubperiods :: forall a. NumSubperiods a => Gen (BaseTestData Identity a)
 arbitraryInputWithinRangeSubperiods = arbitraryBaseTestData
   choose_
-  $ \offsetFrom offsetTo numSubperiods -> do
+  $ \offsetFrom _ numSubperiods -> do
       generatedOffsets <- traverse (generateOffsets offsetFrom) . adjacentPairs $ zeroList numSubperiods
       let (newestOffsets, offsets) = sequence $ (\(newestTime, times) -> ([newestTime], times)) <$> generatedOffsets
 
       pure (concat offsets ++ coerce newestOffsets, newestOffsets)
 
       where
-        generateOffsets :: Int -> (a, a) -> Gen (NewestOffset, [Offset])
-        generateOffsets offsetFrom (numSubperiodFrom, numSubperiodTo) = do
+        generateOffsets :: Offset -> (a, a) -> Gen (NewestOffset, [Offset])
+        generateOffsets (Offset offsetFrom) (numSubperiodFrom, numSubperiodTo) = do
           -- note: both offsets are shifted relative to `offsetFrom` in order not to start from `now`,
           -- that's where the extra `+ 1` comes from
           let subperiodFrom = ceiling_ $ fromIntegral offsetFrom * (numSubperiodFrom + 1)
