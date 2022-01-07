@@ -40,7 +40,9 @@ instance NumSubperiods Float where
   choose_ = choose (1.0, 10.0)
   zeroList = floatList
 
-type BaseTestData a = WithNow (Period, Times, a, NewestTimes)
+type PeriodInfo a = {-NumSubperiods a =>-} (Period, a)
+
+type BaseTestData a = WithNow (PeriodInfo a, Times, NewestTimes)
 
 arbitraryNow :: (Now -> Gen a) -> Gen (WithNow a)
 arbitraryNow f = do
@@ -68,11 +70,13 @@ arbitraryBaseTestData genNumSubperiods genOffsets = arbitraryNow $ \now -> do
       newestTimes = flip addLocalTime now . secondsToNominalDiffTime . intToSeconds . negate <$> coerce newestOffsets
 
   pure
-    ( ( PrettyTimeInterval . secondsToNominalDiffTime . intToSeconds $ offsetFrom
+    ( (
+      ( PrettyTimeInterval . secondsToNominalDiffTime . intToSeconds $ offsetFrom
       , PrettyTimeInterval . secondsToNominalDiffTime . intToSeconds $ offsetTo
       )
+      , numSubperiods
+      )
     , (Sorted $ sort times)
-    , numSubperiods
     , (Sorted $ sort newestTimes)
     )
 
@@ -92,7 +96,6 @@ arbitraryInputOutsideOfRange = arbitraryBaseTestData
 -- |Generates an arbitrary input for `cleanup` such that the number of times
 -- |matches the number of subperiods in the period.
 arbitraryInputWithinRange :: Gen (BaseTestData Int)
--- TODO join `Period` and `NumSubperiods` into a logically single type?
 arbitraryInputWithinRange = arbitraryBaseTestData
   (chooseInt (1, 10))
   $ \offsetFrom offsetTo numSubperiods -> do
