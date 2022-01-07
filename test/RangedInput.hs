@@ -9,6 +9,7 @@ import GFS
 import Control.Arrow ((>>>))
 import Data.Coerce (coerce)
 import Data.Fixed
+import Data.Functor.Identity (Identity(..))
 import Data.List
 import Data.Time.Calendar
 import Data.Time.Clock
@@ -42,7 +43,7 @@ instance NumSubperiods Float where
 
 type PeriodInfo a = {-NumSubperiods a =>-} (Period, a)
 
-type BaseTestData a = WithNow (PeriodInfo a, Times, NewestTimes)
+type BaseTestData f a = WithNow (f (PeriodInfo a), Times, NewestTimes)
 
 arbitraryNow :: (Now -> Gen a) -> Gen (WithNow a)
 arbitraryNow f = do
@@ -57,7 +58,7 @@ arbitraryNow f = do
 newtype Offset = Offset Int
 newtype NewestOffset = NewestOffset Int
 
-arbitraryBaseTestData :: NumSubperiods a => Gen a -> (Int -> Int -> a -> Gen ([Offset], [NewestOffset])) -> Gen (BaseTestData a)
+arbitraryBaseTestData :: NumSubperiods a => Gen a -> (Int -> Int -> a -> Gen ([Offset], [NewestOffset])) -> Gen (BaseTestData Identity a)
 arbitraryBaseTestData genNumSubperiods genOffsets = arbitraryNow $ \now -> do
   offsetFrom <- hours <$> chooseInt (1, 24) -- chooseSecond (hours 1, weeks 1)
   numSubperiods <- genNumSubperiods
@@ -70,7 +71,7 @@ arbitraryBaseTestData genNumSubperiods genOffsets = arbitraryNow $ \now -> do
       newestTimes = flip addLocalTime now . secondsToNominalDiffTime . intToSeconds . negate <$> coerce newestOffsets
 
   pure
-    ( (
+    ( Identity (
       ( PrettyTimeInterval . secondsToNominalDiffTime . intToSeconds $ offsetFrom
       , PrettyTimeInterval . secondsToNominalDiffTime . intToSeconds $ offsetTo
       )
@@ -82,7 +83,7 @@ arbitraryBaseTestData genNumSubperiods genOffsets = arbitraryNow $ \now -> do
 
 -- |Generates an arbitrary input for `cleanup` such that the times are outside
 -- |the generated period (within certain bounds).
-arbitraryInputOutsideOfRange :: Gen (BaseTestData Float)
+arbitraryInputOutsideOfRange :: Gen (BaseTestData Identity Float)
 arbitraryInputOutsideOfRange = arbitraryBaseTestData
   (choose @Float (1.1, 4.9))
   $ \offsetFrom offsetTo _ -> do
@@ -95,7 +96,7 @@ arbitraryInputOutsideOfRange = arbitraryBaseTestData
 
 -- |Generates an arbitrary input for `cleanup` such that the number of times
 -- |matches the number of subperiods in the period.
-arbitraryInputWithinRange :: Gen (BaseTestData Int)
+arbitraryInputWithinRange :: Gen (BaseTestData Identity Int)
 arbitraryInputWithinRange = arbitraryBaseTestData
   (chooseInt (1, 10))
   $ \offsetFrom offsetTo numSubperiods -> do
@@ -109,7 +110,7 @@ type NewestTimes = Times
 -- |for the ease of writing tests.
 -- Sample output:
 -- `(2000-01-01 00:00:00,1999-12-31 23:59:59,(1 d,5 d),Sorted {getSorted = [1999-12-27 15:53:04,1999-12-28 00:50:13,1999-12-29 20:36:03,1999-12-30 14:32:27]},Sorted {getSorted = [1999-12-27 15:53:04,1999-12-27 16:53:56,1999-12-27 18:52:44,1999-12-27 19:24:03,1999-12-27 21:07:00,1999-12-27 22:50:25,1999-12-28 00:50:13,1999-12-28 00:55:15,1999-12-28 02:22:39,1999-12-28 08:52:45,1999-12-28 13:19:33,1999-12-29 20:36:03,1999-12-29 23:19:06,1999-12-30 14:32:27,1999-12-30 14:55:48,1999-12-30 17:32:40,1999-12-30 18:40:20,1999-12-30 19:25:54,1999-12-30 19:58:30,1999-12-30 21:17:13,1999-12-30 23:45:06]})`
-arbitraryInputWithinRangeSubperiods :: forall a. NumSubperiods a => Gen (BaseTestData a)
+arbitraryInputWithinRangeSubperiods :: forall a. NumSubperiods a => Gen (BaseTestData Identity a)
 arbitraryInputWithinRangeSubperiods = arbitraryBaseTestData
   choose_
   $ \offsetFrom offsetTo numSubperiods -> do
