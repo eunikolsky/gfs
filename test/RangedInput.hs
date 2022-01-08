@@ -115,15 +115,26 @@ arbitraryInputWithinRangeSubperiods :: NumSubperiods a => Gen (BaseTestData Iden
 arbitraryInputWithinRangeSubperiods = arbitraryBaseTestData
   choose_
   $ \offsetFrom _ numSubperiods -> do
-      generatedOffsets <- traverse (generateOffsets offsetFrom) . adjacentPairs $ zeroList numSubperiods
+      generatedOffsets <- traverse (arbitraryOffsets offsetFrom) . adjacentPairs $ zeroList numSubperiods
       let (newestOffsets, offsets) = sequence $ (\(newestTime, times) -> ([newestTime], times)) <$> generatedOffsets
 
       pure (concat offsets ++ coerce newestOffsets, newestOffsets)
 
-generateOffsets :: NumSubperiods a => Offset -> (a, a) -> Gen (NewestOffset, [Offset])
-generateOffsets (Offset offsetFrom) (numSubperiodFrom, numSubperiodTo) = do
-  -- note: both offsets are shifted relative to `offsetFrom` in order not to start from `now`,
-  -- that's where the extra `+ 1` comes from
+-- |Generates arbitrary time offsets (newest offsets are also included in all
+-- |offsets) based on the initial offset of a period and the number of subperiod
+-- |range in that period.
+--
+-- Example:
+--  * `offsetFrom = hours 4`
+--  * `numSubperiod = (3, 3.5)`
+--  * => returns offsets in `[hours (4 * (3 + 1)), hours (4 * (3.5 + 1))] =
+--       = [hours 16, hours 18]`
+--
+-- Note: the extra `+ 1` comes from the fact that the subperiod itself is shifted
+-- from "zero" (i.e., "now") by `offsetFrom`, and we need to generate the
+-- offsets relative to `offsetFrom`, not "zero".
+arbitraryOffsets :: NumSubperiods a => Offset -> (a, a) -> Gen (NewestOffset, [Offset])
+arbitraryOffsets (Offset offsetFrom) (numSubperiodFrom, numSubperiodTo) = do
   let subperiodFrom = ceiling_ $ fromIntegral offsetFrom * (numSubperiodFrom + 1)
       subperiodTo = ceiling_ $ fromIntegral offsetFrom * (numSubperiodTo + 1)
   newestOffset <- choose (subperiodFrom + 1, subperiodTo)
@@ -162,7 +173,7 @@ arbitraryMultiPeriodBaseTestData = arbitraryNow $ \now -> do
     generatePeriod :: Offset -> Gen (Offset, (PeriodInfo Int, [NewestOffset], [Offset]))
     generatePeriod oFrom@(Offset offsetFrom) = do
       numSubperiods <- chooseInt (1, 5)
-      generatedOffsets <- traverse (generateOffsets oFrom) . adjacentPairs $ zeroList numSubperiods
+      generatedOffsets <- traverse (arbitraryOffsets oFrom) . adjacentPairs $ zeroList numSubperiods
       let (newestOffsets, offsets) = sequence $ (\(newestTime, times) -> ([newestTime], times)) <$> generatedOffsets
       let offsetTo = offsetFrom * (numSubperiods + 1)
       pure
