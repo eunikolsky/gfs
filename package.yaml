@@ -52,4 +52,5 @@ tests:
     - QuickCheck
     - hspec
     - hspec-discover
+    - monad-loops
     - time

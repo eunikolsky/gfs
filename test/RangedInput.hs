@@ -14,6 +14,8 @@ import Data.List
 import Data.Time.Calendar
 import Data.Time.Clock
 import Data.Time.LocalTime
+
+import Control.Monad.Loops (unfoldrM)
 import Test.QuickCheck
 
 -- An attempt to clarify the tuples' values in the generators below. A poor
@@ -130,6 +132,40 @@ arbitraryInputWithinRangeSubperiods = arbitraryBaseTestData
           numOffsets <- chooseInt (1, 2)
           offsets <- fmap (fmap Offset) . vectorOf numOffsets $ choose (newestOffset, subperiodTo)
           pure (NewestOffset newestOffset, offsets)
+
+-- |Generates an arbitrary input for `cleanup` consisting of multiple,
+-- |properly-aligned periods, and the `times` and `newestTimes` inside all
+-- |the generated periods.
+arbitraryMultiPeriodBaseTestData :: Gen (BaseTestData [] Int)
+arbitraryMultiPeriodBaseTestData = arbitraryNow $ \now -> do
+  numPeriods <- chooseInt (1, 4)
+  offsetFrom <- Offset . hours <$> chooseInt (1, 10)
+  periods <- unfoldrM nextPeriod (offsetFrom, numPeriods)
+  pure (periods, Sorted [], Sorted [])
+
+  where
+    nextPeriod :: (Offset, Int) -> Gen (Maybe (PeriodInfo Int, (Offset, Int)))
+    nextPeriod (offsetFrom, numPeriods) =
+      if numPeriods == 0
+      then pure Nothing
+      else do
+        (offsetTo, period) <- generatePeriod offsetFrom
+        let nextOffsetFrom = offsetTo
+        pure . Just $ (period, (nextOffsetFrom, numPeriods - 1))
+
+    generatePeriod :: Offset -> Gen (Offset, PeriodInfo Int)
+    generatePeriod (Offset offsetFrom) = do
+      numSubperiods <- chooseInt (1, 5)
+      let offsetTo = offsetFrom * (numSubperiods + 1)
+      pure
+        ( Offset offsetTo
+        , ( ( PrettyTimeInterval . secondsToNominalDiffTime . intToSeconds $ offsetFrom
+            , PrettyTimeInterval . secondsToNominalDiffTime . intToSeconds $ offsetTo
+            )
+          , numSubperiods
+          )
+        )
+
 
 intToSeconds :: Int -> Pico
 intToSeconds = MkFixed . (* (resolution (0 :: Pico))) . fromIntegral
