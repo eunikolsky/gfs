@@ -56,7 +56,7 @@ spec = do
 
     it "cleans up items outside of the specified range (with exceptions)" $ do
       property $ forAll arbitraryInputOutsideOfRange $ \(now, newest, (Identity (range, _), times, _)) ->
-        let inputTimes = getSorted times
+        let inputTimes = getSorted . unTimes $ times
             -- we always have to separately add a newest time that is never removed
             input = inputTimes ++ [newest]
             cleanedUp = cleanup range input now
@@ -69,7 +69,7 @@ spec = do
 
     it "leaves no more times than there are subperiods with times" $ do
       property $ forAll arbitraryInputWithinRange $ \(now, newest, (Identity (range, numSubperiods), times, _)) ->
-        let inputTimes = getSorted times
+        let inputTimes = getSorted . unTimes $ times
             -- we always have to separately add a newest time that is never removed
             input = inputTimes ++ [newest]
             rest = input \\ (cleanup range input now ++ [newest])
@@ -82,12 +82,12 @@ spec = do
 
     it "leaves only the newest time in every subperiod" $ do
       property $ forAll (arbitraryInputWithinRangeSubperiods @Float) $ \(now, newest, (Identity (range, _), times, newestTimes)) ->
-        let inputTimes = getSorted times
+        let inputTimes = getSorted . unTimes $ times
             input = inputTimes ++ [newest]
             rest = input \\ (cleanup range input now ++ [newest])
 
-            description = concat ["Actual left: ", show rest, "; expected: ", show $ getSorted newestTimes]
-        in counterexample description $ rest == getSorted newestTimes
+            description = concat ["Actual left: ", show rest, "; expected: ", show . getSorted . unNewestTimes $ newestTimes]
+        in counterexample description $ rest == getSorted (unNewestTimes newestTimes)
 
     it "removes no more than two times when `now` shifts forward by `offsetFrom`" $ do
       -- note: the max allowed removed times after the shift in this property
@@ -95,7 +95,7 @@ spec = do
       -- if that number is an integer (i.e., all subperiods are of the same
       -- duration), then the max allowed removed times is only one!
       property $ forAll (arbitraryInputWithinRangeSubperiods @Float) $ \(now, newest, (Identity (range, _), times, newestTimes)) ->
-        let inputTimes = getSorted times
+        let inputTimes = getSorted . unTimes $ times
             input = inputTimes ++ [newest]
             rest = input \\ cleanup range input now
 
@@ -113,7 +113,7 @@ spec = do
 
     it "removes no more than one time when `now` shifts forward by `offsetFrom` and all subperiods are equal" $ do
       property $ forAll (arbitraryInputWithinRangeSubperiods @Int) $ \(now, newest, (Identity (range, _), times, newestTimes)) ->
-        let inputTimes = getSorted times
+        let inputTimes = getSorted . unTimes $ times
             input = inputTimes ++ [newest]
             rest = input \\ cleanup range input now
 
