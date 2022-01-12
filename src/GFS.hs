@@ -84,6 +84,9 @@ cleanup periods times = fst . runWriter . cleanup_ periods times
 
 type L = Writer [String]
 
+-- |Semantically equivalent to `Periods + LocalTime`.
+type TimePeriod = (LocalTime, LocalTime)
+
 cleanup_ :: NE.NonEmpty Period -> [LocalTime] -> LocalTime -> L [LocalTime]
 cleanup_ periods times now
   = consider . leaveNewest . takeWhile (before now) $ times
@@ -91,23 +94,23 @@ cleanup_ periods times now
     numSubperiods :: Period -> Int
     numSubperiods (PrettyTimeInterval from, PrettyTimeInterval to)  = ceiling . nominalDiffTimeToSeconds $ (to - from) / from
 
-    getSubperiods :: Period -> [(LocalTime, LocalTime)]
+    getSubperiods :: Period -> [TimePeriod]
     getSubperiods period@(PrettyTimeInterval from, _) = adjacentPairs . reverse $
       map
         (\index -> (addLocalTime (-from * (fromIntegral index + 1)) now))
         [0..numSubperiods period]
 
-    timePeriods :: [(LocalTime, LocalTime)]
+    timePeriods :: [TimePeriod]
     timePeriods = (\(PrettyTimeInterval from, PrettyTimeInterval to) ->
       (addLocalTime (-to) now, addLocalTime (-from) now))
       <$> NE.toList periods
 
     withinOnePeriod = withinOneSubperiod
 
-    withinOneSubperiod :: [(LocalTime, LocalTime)] -> LocalTime -> LocalTime -> Bool
+    withinOneSubperiod :: [TimePeriod] -> LocalTime -> LocalTime -> Bool
     withinOneSubperiod subperiods t0 t1 = any (bothInsideSubperiod t0 t1) subperiods
 
-    bothInsideSubperiod :: LocalTime -> LocalTime -> (LocalTime, LocalTime) -> Bool
+    bothInsideSubperiod :: LocalTime -> LocalTime -> TimePeriod -> Bool
     bothInsideSubperiod t0 t1 subperiod = t0 `insideSubperiod` subperiod && t1 `insideSubperiod` subperiod
       where t `insideSubperiod` (from, to) = t >= from && t < to
 
