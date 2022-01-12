@@ -143,11 +143,23 @@ arbitraryOffsets (Offset offsetFrom) (numSubperiodFrom, numSubperiodTo) = do
   offsets <- fmap (fmap Offset) . vectorOf numOffsets $ choose (newestOffset, subperiodTo)
   pure (NewestOffset newestOffset, offsets)
 
+-- |A control parameter for `arbitraryMultiPeriodBaseTestData` that defines
+-- |whether all periods will have times or some will be without times.
+-- |This type is much more self-explanatory than a `Bool`.
+data MultiPeriodTimesQuantifier
+  = AllPeriodsHaveTimes
+  | SomePeriodsHaveTimes
+
+quantifierSkipGeneratingOffsets :: MultiPeriodTimesQuantifier -> Gen Bool
+quantifierSkipGeneratingOffsets AllPeriodsHaveTimes = pure False
+quantifierSkipGeneratingOffsets SomePeriodsHaveTimes = chooseBool
+
 -- |Generates an arbitrary input for `cleanup` consisting of multiple,
--- |properly-aligned periods, and the `times` and `newestTimes` inside all
--- |the generated periods.
-arbitraryMultiPeriodBaseTestData :: Gen (BaseTestData [] Int)
-arbitraryMultiPeriodBaseTestData = arbitraryNow $ \now -> do
+-- |properly-aligned periods, and the `times` and `newestTimes` inside
+-- |the generated periods. `quantifier` controls whether all the periods
+-- |have times.
+arbitraryMultiPeriodBaseTestData :: MultiPeriodTimesQuantifier -> Gen (BaseTestData [] Int)
+arbitraryMultiPeriodBaseTestData quantifier = arbitraryNow $ \now -> do
   numPeriods <- chooseInt (1, 4)
   offsetFrom <- Offset . hours <$> chooseInt (1, 10)
   infos <- unfoldrM nextPeriod (offsetFrom, numPeriods)
@@ -175,9 +187,13 @@ arbitraryMultiPeriodBaseTestData = arbitraryNow $ \now -> do
       numSubperiods <- chooseInt (1, 5)
       let offsetTo = offsetFrom * (numSubperiods + 1)
 
-      (newestOffsets, offsets) <- do
-        generatedOffsets <- traverse (arbitraryOffsets oFrom) . adjacentPairs $ zeroList numSubperiods
-        pure . sequence $ (\(newestTime, times) -> ([newestTime], times)) <$> generatedOffsets
+      skipGeneratingOffsets <- quantifierSkipGeneratingOffsets quantifier
+
+      (newestOffsets, offsets) <- if skipGeneratingOffsets
+        then pure ([], [])
+        else do
+          generatedOffsets <- traverse (arbitraryOffsets oFrom) . adjacentPairs $ zeroList numSubperiods
+          pure . sequence $ (\(newestTime, times) -> ([newestTime], times)) <$> generatedOffsets
 
       pure
         ( Offset offsetTo
@@ -191,6 +207,9 @@ arbitraryMultiPeriodBaseTestData = arbitraryNow $ \now -> do
           )
         )
 
+
+chooseBool :: Gen Bool
+chooseBool = chooseEnum (minBound, maxBound)
 
 intToSeconds :: Int -> Pico
 intToSeconds = MkFixed . (* (resolution (0 :: Pico))) . fromIntegral

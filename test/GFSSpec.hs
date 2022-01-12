@@ -135,15 +135,22 @@ spec = do
         in counterexample description $ numExtraRemovedTimes <= 1
 
     it "leaves only the newest time in every subperiod of every period" $ do
-      property $ forAll arbitraryMultiPeriodBaseTestData $ \(now, newest, (periodInfos, times, newestTimes)) ->
-        let inputTimes = getSorted . unTimes $ times
-            input = inputTimes ++ [newest]
-            ranges = fst <$> periodInfos
-            (cleaned, log) = runWriter $ cleanup_ (NE.fromList ranges) input now
-            rest = input \\ (cleaned ++ [newest])
+      prop_leavesOnlyNewestTimes AllPeriodsHaveTimes
 
-            description = intercalate "\n" $ concat ["Actual left: ", show rest, "; expected: ", show . getSorted . unNewestTimes $ newestTimes] : log
-        in counterexample description $ rest == getSorted (unNewestTimes newestTimes)
+    it "correctly skips periods without any times" $ do
+      prop_leavesOnlyNewestTimes SomePeriodsHaveTimes
+
+prop_leavesOnlyNewestTimes :: MultiPeriodTimesQuantifier -> Property
+prop_leavesOnlyNewestTimes quantifier =
+  property $ forAll (arbitraryMultiPeriodBaseTestData quantifier) $ \(now, newest, (periodInfos, times, newestTimes)) ->
+    let inputTimes = getSorted . unTimes $ times
+        input = inputTimes ++ [newest]
+        ranges = fst <$> periodInfos
+        (cleaned, log) = runWriter $ cleanup_ (NE.fromList ranges) input now
+        rest = input \\ (cleaned ++ [newest])
+
+        description = intercalate "\n" $ concat ["Actual left: ", show rest, "; expected: ", show . getSorted . unNewestTimes $ newestTimes] : log
+    in counterexample description $ rest == getSorted (unNewestTimes newestTimes)
 
 -- |Describes @period@ as times relative to @now@.
 describePeriod :: Period -> LocalTime -> String
