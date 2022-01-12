@@ -2,10 +2,12 @@ module GFS
     ( Period
     , PrettyTimeInterval(..)
     , cleanup
+    , cleanup_
     ) where
 
 import Control.Monad.Writer.Strict
 import Data.List
+import qualified Data.List.NonEmpty as NE
 import Data.Maybe
 import Data.Time.Clock
 import Data.Time.LocalTime
@@ -74,35 +76,71 @@ type Period = (OffsetFrom, OffsetTo)
 -- |(for safety).
 -- |
 -- |__Assumption__: @times@ is sorted in the ascending order (oldest to newest).
-cleanup :: Period -> [LocalTime] -> LocalTime -> [LocalTime]
-type L = Writer [String]
-cleanup (PrettyTimeInterval from, PrettyTimeInterval to) times now
-  = fst $ runWriter
-    (consider . leaveNewest . takeWhile (before now) $ times)
-  where
-    numSubperiods :: Int
-    numSubperiods = ceiling . nominalDiffTimeToSeconds $ (to - from) / from
+-- |__Assumption__: @periods@ is sorted in the ascending order (smaller to
+-- |bigger) and the start of the next period is the end of the previous period,
+-- |e.g.: @[(1d, 7d), (7d, 31d), (31d, 1y)]@.
+cleanup :: NE.NonEmpty Period -> [LocalTime] -> LocalTime -> [LocalTime]
+cleanup periods times = fst . runWriter . cleanup_ periods times
 
-    subperiods = adjacentPairs . reverse $ map (\index -> (addLocalTime (-from * (fromIntegral index + 1)) now)) [0..numSubperiods]
+type L = Writer [String]
+
+cleanup_ :: NE.NonEmpty Period -> [LocalTime] -> LocalTime -> L [LocalTime]
+cleanup_ periods times now
+  = consider . leaveNewest . takeWhile (before now) $ times
+  where
+    numSubperiods :: Period -> Int
+    numSubperiods (PrettyTimeInterval from, PrettyTimeInterval to)  = ceiling . nominalDiffTimeToSeconds $ (to - from) / from
+
+    getSubperiods :: Period -> [(LocalTime, LocalTime)]
+    getSubperiods period@(PrettyTimeInterval from, _) = adjacentPairs . reverse $
+      map
+        (\index -> (addLocalTime (-from * (fromIntegral index + 1)) now))
+        [0..numSubperiods period]
+
+    timePeriods :: [(LocalTime, LocalTime)]
+    timePeriods = (\(PrettyTimeInterval from, PrettyTimeInterval to) ->
+      (addLocalTime (-to) now, addLocalTime (-from) now))
+      <$> NE.toList periods
+
+    withinOnePeriod = withinOneSubperiod
+
+    withinOneSubperiod :: [(LocalTime, LocalTime)] -> LocalTime -> LocalTime -> Bool
+    withinOneSubperiod subperiods t0 t1 = any (bothInsideSubperiod t0 t1) subperiods
+
+    bothInsideSubperiod :: LocalTime -> LocalTime -> (LocalTime, LocalTime) -> Bool
+    bothInsideSubperiod t0 t1 subperiod = t0 `insideSubperiod` subperiod && t1 `insideSubperiod` subperiod
+      where t `insideSubperiod` (from, to) = t >= from && t < to
+
+    combinedPeriod :: Period
+    combinedPeriod = (earliestFrom, latestTo)
+      where
+        (earliestFrom, _) = NE.head periods
+        (_, latestTo) = NE.last periods
 
     -- Any of the input times here can be cleaned up.
     consider :: [LocalTime] -> L [LocalTime]
     consider times = do
       tell [
-        "numSubperiods " <> show numSubperiods,
-        "subperiods " <> show subperiods,
+        --"numSubperiods " <> show numSubperiods,
+        --"subperiods " <> show subperiods,
         "considering " <> show times]
-      inside <- insidePeriod times
-      pure $ outsideOfPeriod times ++ inside
+      let grouped = zip (NE.toList . NE.reverse $ periods) $ groupBy (withinOnePeriod timePeriods) times
+          outside = outsideOfPeriod combinedPeriod times
+      insideTimes <- concat <$> traverse (\(period, times) -> insidePeriod period times) grouped
+      pure $ outside ++ insideTimes
 
       where
-        inside :: LocalTime -> Bool
-        inside time = time >= addLocalTime (-to) now && time <= addLocalTime (-from) now
-        outsideOfPeriod = filter (not . inside)
-        insidePeriod :: [LocalTime] -> L [LocalTime]
-        insidePeriod times = do
-          filtered <- log "filter" (filter inside) times
-          grouped <- log "groupBy" (groupBy withinOneSubperiod) filtered
+        isInside :: Period -> LocalTime -> Bool
+        isInside (PrettyTimeInterval from, PrettyTimeInterval to) time = time >= addLocalTime (-to) now && time <= addLocalTime (-from) now
+
+        outsideOfPeriod :: Period -> [LocalTime] -> [LocalTime]
+        outsideOfPeriod period = filter (not . isInside period)
+        insidePeriod :: Period -> [LocalTime] -> L [LocalTime]
+        insidePeriod period times = do
+          let subperiods = getSubperiods period
+          tell ["insidePeriod " <> show period]
+          filtered <- log "filter" (filter (isInside period)) times
+          grouped <- log "groupBy" (groupBy (withinOneSubperiod subperiods)) filtered
           exceptNewest <- log "not newest" (map leaveNewest) grouped
           log "concat" concat exceptNewest
 
@@ -117,13 +155,6 @@ cleanup (PrettyTimeInterval from, PrettyTimeInterval to) times now
           let r = f x
           tell [n <> ": " <> show x <> " => " <> show r]
           pure r
-
-        withinOneSubperiod :: LocalTime -> LocalTime -> Bool
-        withinOneSubperiod t0 t1 = any (bothInsideSubperiod t0 t1) subperiods
-
-        bothInsideSubperiod :: LocalTime -> LocalTime -> (LocalTime, LocalTime) -> Bool
-        bothInsideSubperiod t0 t1 subperiod = t0 `insideSubperiod` subperiod && t1 `insideSubperiod` subperiod
-          where t `insideSubperiod` (from, to) = t >= from && t < to
 
     before = flip (<=)
     leaveNewest = dropLast

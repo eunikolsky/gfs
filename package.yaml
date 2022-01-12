@@ -53,4 +53,5 @@ tests:
     - hspec
     - hspec-discover
     - monad-loops
+    - mtl
     - time

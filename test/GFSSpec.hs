@@ -6,8 +6,10 @@ import ArbitraryLocalTime
 import GFS
 import RangedInput
 
+import Control.Monad.Writer.Strict (runWriter)
 import Data.Functor.Identity (Identity(..))
 import Data.List
+import qualified Data.List.NonEmpty as NE
 import Data.Time.Clock
 import Data.Time.LocalTime
 import Test.Hspec
@@ -18,20 +20,20 @@ spec = do
   describe "cleanup" $ do
     it "returns nothing for empty input" $
       property $ \period now ->
-        cleanup period [] now == []
+        cleanup (NE.fromList [period]) [] now == []
 
     it "never cleans up the newest time" $ do
       property $ \period times now ->
         let input = sort . getNonEmpty $ times
             -- this is safe because @times@ is a @NonEmptyList LocalTime@
             newest = last input
-            cleanedUp = cleanup period input now
+            cleanedUp = cleanup (NE.fromList [period]) input now
         in newest `notElem` cleanedUp
 
     it "never cleans up times in the future" $ do
       property $ \period times now ->
         let input = sort . getNonEmpty $ times
-            cleanedUp = cleanup period input now
+            cleanedUp = cleanup (NE.fromList [period]) input now
             isFutureDate = (> 0) . (`diffLocalTime` now)
         in all (not . isFutureDate) cleanedUp
 
@@ -39,16 +41,17 @@ spec = do
       -- TODO apply multiple times
       property $ \period times now ->
         let input = sort . getNonEmpty $ times
-            cleanedUp = cleanup period input now
+            periods = NE.fromList [period]
+            cleanedUp = cleanup periods input now
             rest = input \\ cleanedUp
-            restAgain = rest \\ cleanup period rest now
+            restAgain = rest \\ cleanup periods rest now
         in counterexample (concat ["rest: ", show rest, "; restAgain: ", show restAgain])
           $ rest == restAgain
 
     it "does not create cleanup times" $ do
       property $ \period times now ->
         let input = sort . getNonEmpty $ times
-            cleanedUp = cleanup period input now
+            cleanedUp = cleanup (NE.fromList [period]) input now
         in null $ cleanedUp \\ input
 
     -- TODO does this property makes sense now?
@@ -59,7 +62,7 @@ spec = do
         let inputTimes = getSorted . unTimes $ times
             -- we always have to separately add a newest time that is never removed
             input = inputTimes ++ [newest]
-            cleanedUp = cleanup range input now
+            cleanedUp = cleanup (NE.fromList [range]) input now
 
             actual = sort cleanedUp
             expected = inputTimes
@@ -72,7 +75,7 @@ spec = do
         let inputTimes = getSorted . unTimes $ times
             -- we always have to separately add a newest time that is never removed
             input = inputTimes ++ [newest]
-            rest = input \\ (cleanup range input now ++ [newest])
+            rest = input \\ (cleanup (NE.fromList [range]) input now ++ [newest])
 
             numberOfItems = concat ["Actual left items: ", show (length rest), "; expected: ", show numSubperiods]
         in counterexample (intercalate "\n" [describePeriod range now, numberOfItems])
@@ -84,7 +87,7 @@ spec = do
       property $ forAll (arbitraryInputWithinRangeSubperiods @Float) $ \(now, newest, (Identity (range, _), times, newestTimes)) ->
         let inputTimes = getSorted . unTimes $ times
             input = inputTimes ++ [newest]
-            rest = input \\ (cleanup range input now ++ [newest])
+            rest = input \\ (cleanup (NE.fromList [range]) input now ++ [newest])
 
             description = concat ["Actual left: ", show rest, "; expected: ", show . getSorted . unNewestTimes $ newestTimes]
         in counterexample description $ rest == getSorted (unNewestTimes newestTimes)
@@ -97,10 +100,11 @@ spec = do
       property $ forAll (arbitraryInputWithinRangeSubperiods @Float) $ \(now, newest, (Identity (range, _), times, newestTimes)) ->
         let inputTimes = getSorted . unTimes $ times
             input = inputTimes ++ [newest]
-            rest = input \\ cleanup range input now
+            ranges = NE.fromList [range]
+            rest = input \\ cleanup ranges input now
 
             shiftedNow = unPrettyTimeInterval (fst range) `addLocalTime` now
-            shiftedRest = rest \\ cleanup range rest shiftedNow
+            shiftedRest = rest \\ cleanup ranges rest shiftedNow
 
             numExtraRemovedTimes = length rest - length shiftedRest
             description = concat
@@ -115,10 +119,11 @@ spec = do
       property $ forAll (arbitraryInputWithinRangeSubperiods @Int) $ \(now, newest, (Identity (range, _), times, newestTimes)) ->
         let inputTimes = getSorted . unTimes $ times
             input = inputTimes ++ [newest]
-            rest = input \\ cleanup range input now
+            ranges = NE.fromList [range]
+            rest = input \\ cleanup ranges input now
 
             shiftedNow = unPrettyTimeInterval (fst range) `addLocalTime` now
-            shiftedRest = rest \\ cleanup range rest shiftedNow
+            shiftedRest = rest \\ cleanup ranges rest shiftedNow
 
             numExtraRemovedTimes = length rest - length shiftedRest
             description = concat
@@ -128,6 +133,17 @@ spec = do
               , "): ", show shiftedRest
               ]
         in counterexample description $ numExtraRemovedTimes <= 1
+
+    it "leaves only the newest time in every subperiod of every period" $ do
+      property $ forAll arbitraryMultiPeriodBaseTestData $ \(now, newest, (periodInfos, times, newestTimes)) ->
+        let inputTimes = getSorted . unTimes $ times
+            input = inputTimes ++ [newest]
+            ranges = fst <$> periodInfos
+            (cleaned, log) = runWriter $ cleanup_ (NE.fromList ranges) input now
+            rest = input \\ (cleaned ++ [newest])
+
+            description = intercalate "\n" $ concat ["Actual left: ", show rest, "; expected: ", show . getSorted . unNewestTimes $ newestTimes] : log
+        in counterexample description $ rest == getSorted (unNewestTimes newestTimes)
 
 -- |Describes @period@ as times relative to @now@.
 describePeriod :: Period -> LocalTime -> String
