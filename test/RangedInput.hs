@@ -151,7 +151,6 @@ arbitraryMultiPeriodBaseTestData = arbitraryNow $ \now -> do
   numPeriods <- chooseInt (1, 4)
   offsetFrom <- Offset . hours <$> chooseInt (1, 10)
   infos <- unfoldrM nextPeriod (offsetFrom, numPeriods)
-  --let (periods, times, newestTimes) = sequence $ (\(info, times, newestTimes) -> (info, getSorted times, getSorted newestTimes)) <$> infos
   let periods = (\(x, _, _) -> x) <$> infos
       newestOffsets = concatMap (\(_, x, _) -> x) infos
       offsets = concatMap (\(_, _, x) -> x) infos
@@ -174,9 +173,12 @@ arbitraryMultiPeriodBaseTestData = arbitraryNow $ \now -> do
     generatePeriod :: Offset -> Gen (Offset, (PeriodInfo Int, [NewestOffset], [Offset]))
     generatePeriod oFrom@(Offset offsetFrom) = do
       numSubperiods <- chooseInt (1, 5)
-      generatedOffsets <- traverse (arbitraryOffsets oFrom) . adjacentPairs $ zeroList numSubperiods
-      let (newestOffsets, offsets) = sequence $ (\(newestTime, times) -> ([newestTime], times)) <$> generatedOffsets
       let offsetTo = offsetFrom * (numSubperiods + 1)
+
+      (newestOffsets, offsets) <- do
+        generatedOffsets <- traverse (arbitraryOffsets oFrom) . adjacentPairs $ zeroList numSubperiods
+        pure . sequence $ (\(newestTime, times) -> ([newestTime], times)) <$> generatedOffsets
+
       pure
         ( Offset offsetTo
         , ( ( ( PrettyTimeInterval . secondsToNominalDiffTime . intToSeconds $ offsetFrom
