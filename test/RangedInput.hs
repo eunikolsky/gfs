@@ -9,6 +9,7 @@ import Control.Arrow ((>>>))
 import Data.Fixed
 import Data.Functor.Identity (Identity(..))
 import Data.List
+import qualified Data.List.NonEmpty as NE
 import Data.Time.Calendar
 import Data.Time.Clock
 import Data.Time.LocalTime
@@ -45,7 +46,7 @@ instance NumSubperiods Float where
   choose_ = choose (1.0, 10.0)
   zeroList = floatList
 
-type PeriodInfo a = {-NumSubperiods a =>-} (Period, a)
+type PeriodInfo a = {-NumSubperiods a =>-} (Offsets, a)
 
 type BaseTestData f a = WithNow (f (PeriodInfo a), Times, NewestTimes)
 
@@ -76,9 +77,7 @@ arbitraryBaseTestData genNumSubperiods genOffsets = arbitraryNow $ \now -> do
 
   pure
     ( Identity (
-      ( PrettyTimeInterval . secondsToNominalDiffTime . intToSeconds . unOffset $ offsetFrom
-      , PrettyTimeInterval . secondsToNominalDiffTime . intToSeconds . unOffset $ offsetTo
-      )
+      Offsets $ PrettyTimeInterval . secondsToNominalDiffTime . intToSeconds . unOffset <$> NE.fromList [offsetFrom, offsetTo]
       , numSubperiods
       )
     , (Times . Sorted $ sort times)
@@ -158,54 +157,55 @@ quantifierSkipGeneratingOffsets SomePeriodsHaveTimes = chooseBool
 -- |properly-aligned periods, and the `times` and `newestTimes` inside
 -- |the generated periods. `quantifier` controls whether all the periods
 -- |have times.
-arbitraryMultiPeriodBaseTestData :: MultiPeriodTimesQuantifier -> Gen (BaseTestData [] Int)
+arbitraryMultiPeriodBaseTestData :: MultiPeriodTimesQuantifier -> Gen (BaseTestData Identity Int)
 arbitraryMultiPeriodBaseTestData quantifier = arbitraryNow $ \now -> do
-  numPeriods <- chooseInt (1, 4)
-  offsetFrom <- Offset . hours <$> chooseInt (1, 10)
-  infos <- unfoldrM nextPeriod (offsetFrom, numPeriods)
-  let periods = (\(x, _, _) -> x) <$> infos
-      newestOffsets = concatMap (\(_, x, _) -> x) infos
-      offsets = concatMap (\(_, _, x) -> x) infos
+  pure (Identity (Offsets . NE.fromList $ [PrettyTimeInterval 0], 0), Times . Sorted $ [], NewestTimes . Sorted $ [])
+  --numPeriods <- chooseInt (1, 4)
+  --offsetFrom <- Offset . hours <$> chooseInt (1, 10)
+  --infos <- unfoldrM nextPeriod (offsetFrom, numPeriods)
+  --let periods = (\(x, _, _) -> x) <$> infos
+      --newestOffsets = concatMap (\(_, x, _) -> x) infos
+      --offsets = concatMap (\(_, _, x) -> x) infos
 
-  let times = flip addLocalTime now . secondsToNominalDiffTime . intToSeconds . negate . unOffset <$> offsets
-      newestTimes = flip addLocalTime now . secondsToNominalDiffTime . intToSeconds . negate . unNewestOffset <$> newestOffsets
+  --let times = flip addLocalTime now . secondsToNominalDiffTime . intToSeconds . negate . unOffset <$> offsets
+      --newestTimes = flip addLocalTime now . secondsToNominalDiffTime . intToSeconds . negate . unNewestOffset <$> newestOffsets
 
-  pure (periods, Times . Sorted $ sort times, NewestTimes . Sorted $ sort newestTimes)
+  --pure (periods, Times . Sorted $ sort times, NewestTimes . Sorted $ sort newestTimes)
 
-  where
-    nextPeriod :: (Offset, Int) -> Gen (Maybe ((PeriodInfo Int, [NewestOffset], [Offset]), (Offset, Int)))
-    nextPeriod (offsetFrom, numPeriods) =
-      if numPeriods == 0
-      then pure Nothing
-      else do
-        (offsetTo, info) <- generatePeriod offsetFrom
-        let nextOffsetFrom = offsetTo
-        pure . Just $ (info, (nextOffsetFrom, numPeriods - 1))
+  --where
+    --nextPeriod :: (Offset, Int) -> Gen (Maybe ((PeriodInfo Int, [NewestOffset], [Offset]), (Offset, Int)))
+    --nextPeriod (offsetFrom, numPeriods) =
+      --if numPeriods == 0
+      --then pure Nothing
+      --else do
+        --(offsetTo, info) <- generatePeriod offsetFrom
+        --let nextOffsetFrom = offsetTo
+        --pure . Just $ (info, (nextOffsetFrom, numPeriods - 1))
 
-    generatePeriod :: Offset -> Gen (Offset, (PeriodInfo Int, [NewestOffset], [Offset]))
-    generatePeriod oFrom@(Offset offsetFrom) = do
-      numSubperiods <- chooseInt (1, 5)
-      let offsetTo = offsetFrom * (numSubperiods + 1)
+    --generatePeriod :: Offset -> Gen (Offset, (PeriodInfo Int, [NewestOffset], [Offset]))
+    --generatePeriod oFrom@(Offset offsetFrom) = do
+      --numSubperiods <- chooseInt (1, 5)
+      --let offsetTo = offsetFrom * (numSubperiods + 1)
 
-      skipGeneratingOffsets <- quantifierSkipGeneratingOffsets quantifier
+      --skipGeneratingOffsets <- quantifierSkipGeneratingOffsets quantifier
 
-      (newestOffsets, offsets) <- if skipGeneratingOffsets
-        then pure ([], [])
-        else do
-          generatedOffsets <- traverse (arbitraryOffsets oFrom) . adjacentPairs $ zeroList numSubperiods
-          pure . sequence $ (\(newestTime, times) -> ([newestTime], times)) <$> generatedOffsets
+      --(newestOffsets, offsets) <- if skipGeneratingOffsets
+        --then pure ([], [])
+        --else do
+          --generatedOffsets <- traverse (arbitraryOffsets oFrom) . adjacentPairs $ zeroList numSubperiods
+          --pure . sequence $ (\(newestTime, times) -> ([newestTime], times)) <$> generatedOffsets
 
-      pure
-        ( Offset offsetTo
-        , ( ( ( PrettyTimeInterval . secondsToNominalDiffTime . intToSeconds $ offsetFrom
-              , PrettyTimeInterval . secondsToNominalDiffTime . intToSeconds $ offsetTo
-              )
-            , numSubperiods
-            )
-          , newestOffsets
-          , concat offsets ++ (Offset . unNewestOffset <$> newestOffsets)
-          )
-        )
+      --pure
+        --( Offset offsetTo
+        --, ( ( ( PrettyTimeInterval . secondsToNominalDiffTime . intToSeconds $ offsetFrom
+              --, PrettyTimeInterval . secondsToNominalDiffTime . intToSeconds $ offsetTo
+              --)
+            --, numSubperiods
+            --)
+          --, newestOffsets
+          --, concat offsets ++ (Offset . unNewestOffset <$> newestOffsets)
+          --)
+        --)
 
 
 chooseBool :: Gen Bool
@@ -214,8 +214,13 @@ chooseBool = chooseEnum (minBound, maxBound)
 intToSeconds :: Int -> Pico
 intToSeconds = MkFixed . (* (resolution (0 :: Pico))) . fromIntegral
 
-instance Arbitrary PrettyTimeInterval where
-  arbitrary = PrettyTimeInterval <$> arbitrary
+--instance Arbitrary PrettyTimeInterval where
+  --arbitrary = PrettyTimeInterval <$> arbitrary
+
+instance Arbitrary Offsets where
+  arbitrary = do
+    offsets <- arbitrary
+    pure . Offsets . NE.fromList . sort . fmap PrettyTimeInterval . getNonEmpty $ offsets
 
 nominalHour = 60 * 60
 
