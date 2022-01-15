@@ -57,7 +57,7 @@ spec = do
     --it "cleans up such that there are no remaining elements closer than the period" $ do
 
     it "cleans up items outside of the specified range (with exceptions)" $ do
-      property $ forAll arbitraryInputOutsideOfRange $ \(now, newest, (Identity (range, _), times, _)) ->
+      property $ forAll arbitraryInputOutsideOfRange $ \(now, newest, ((range, _), times, _)) ->
         let inputTimes = getSorted . unTimes $ times
             -- we always have to separately add a newest time that is never removed
             input = inputTimes ++ [newest]
@@ -70,7 +70,7 @@ spec = do
           $ actual == expected
 
     it "leaves no more times than there are subperiods with times" $ do
-      property $ forAll arbitraryInputWithinRange $ \(now, newest, (Identity (range, numSubperiods), times, _)) ->
+      property $ forAll arbitraryInputWithinRange $ \(now, newest, ((range, Identity numSubperiods), times, _)) ->
         let inputTimes = getSorted . unTimes $ times
             -- we always have to separately add a newest time that is never removed
             input = inputTimes ++ [newest]
@@ -83,7 +83,7 @@ spec = do
           $ length rest <= ceiling_ numSubperiods
 
     it "leaves only the newest time in every subperiod" $ do
-      property $ forAll (arbitraryInputWithinRangeSubperiods @Float) $ \(now, newest, (Identity (range, _), times, newestTimes)) ->
+      property $ forAll (arbitraryInputWithinRangeSubperiods @Float) $ \(now, newest, ((range, _), times, newestTimes)) ->
         let inputTimes = getSorted . unTimes $ times
             input = inputTimes ++ [newest]
             rest = input \\ (cleanup range input now ++ [newest])
@@ -96,7 +96,7 @@ spec = do
       -- is two because the number of subperiods is a floating-point number;
       -- if that number is an integer (i.e., all subperiods are of the same
       -- duration), then the max allowed removed times is only one!
-      property $ forAll (arbitraryInputWithinRangeSubperiods @Float) $ \(now, newest, (Identity (range, _), times, newestTimes)) ->
+      property $ forAll (arbitraryInputWithinRangeSubperiods @Float) $ \(now, newest, ((range, _), times, newestTimes)) ->
         let inputTimes = getSorted . unTimes $ times
             input = inputTimes ++ [newest]
             rest = input \\ cleanup range input now
@@ -114,7 +114,7 @@ spec = do
         in counterexample description $ numExtraRemovedTimes <= 2
 
     it "removes no more than one time when `now` shifts forward by `offsetFrom` and all subperiods are equal" $ do
-      property $ forAll (arbitraryInputWithinRangeSubperiods @Int) $ \(now, newest, (Identity (range, _), times, newestTimes)) ->
+      property $ forAll (arbitraryInputWithinRangeSubperiods @Int) $ \(now, newest, ((range, _), times, newestTimes)) ->
         let inputTimes = getSorted . unTimes $ times
             input = inputTimes ++ [newest]
             rest = input \\ cleanup range input now
@@ -139,7 +139,7 @@ spec = do
 
 prop_leavesOnlyNewestTimes :: MultiPeriodTimesQuantifier -> Property
 prop_leavesOnlyNewestTimes quantifier =
-  property $ forAll (arbitraryMultiPeriodBaseTestData quantifier) $ \(now, newest, (Identity periodInfos, times, newestTimes)) ->
+  property $ forAll (arbitraryMultiPeriodBaseTestData quantifier) $ \(now, newest, (periodInfos, times, newestTimes)) ->
     let inputTimes = getSorted . unTimes $ times
         input = inputTimes ++ [newest]
         ranges = fst periodInfos
