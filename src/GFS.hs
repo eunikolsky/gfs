@@ -54,7 +54,9 @@ type Offset = PrettyTimeInterval
 --type OffsetTo = PrettyTimeInterval
 
 newtype Offsets = Offsets { unOffsets :: NE.NonEmpty Offset }
-  deriving Show
+
+instance Show Offsets where
+  show os = "Offsets " ++ (show . NE.toList . unOffsets $ os)
 
 -- FIXME clarify the terms "range" vs "period"! and the direction OffsetFrom <-> OffsetTo!
 
