@@ -171,7 +171,8 @@ arbitraryMultiPeriodBaseTestData quantifier = arbitraryNow $ \now -> do
   let times = flip addLocalTime now . secondsToNominalDiffTime . intToSeconds . negate . unOffset <$> offsets
       newestTimes = flip addLocalTime now . secondsToNominalDiffTime . intToSeconds . negate . unNewestOffset <$> newestOffsets
       periodOffsets = NE.fromList $ fst <$> periods
-      periodInfo = (Offsets . join . fmap unOffsets $ periodOffsets, runIdentity . snd <$> periods)
+      initialOffsetFrom = PrettyTimeInterval . secondsToNominalDiffTime . intToSeconds . unOffset $ offsetFrom
+      periodInfo = (Offsets . (initialOffsetFrom NE.<|) . join . fmap unOffsets $ periodOffsets, runIdentity . snd <$> periods)
 
   pure (periodInfo, Times . Sorted $ sort times, NewestTimes . Sorted $ sort newestTimes)
 
@@ -200,7 +201,7 @@ arbitraryMultiPeriodBaseTestData quantifier = arbitraryNow $ \now -> do
 
       pure
         ( Offset offsetTo
-        , ( ( Offsets $ PrettyTimeInterval . secondsToNominalDiffTime . intToSeconds <$> NE.fromList [offsetFrom, offsetTo]
+        , ( ( Offsets $ PrettyTimeInterval . secondsToNominalDiffTime . intToSeconds <$> NE.fromList [offsetTo]
             , Identity numSubperiods
           )
           , newestOffsets
