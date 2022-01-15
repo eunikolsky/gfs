@@ -7,6 +7,7 @@ import GFS
 
 import Control.Arrow ((>>>))
 import Data.Fixed
+import Data.Functor.Identity (Identity(..))
 import Data.List
 import qualified Data.List.NonEmpty as NE
 import Data.Time.Calendar
@@ -47,7 +48,7 @@ instance NumSubperiods Float where
 
 type PeriodInfo a = {-NumSubperiods a =>-} (Offsets, a)
 
-type BaseTestData a = WithNow (PeriodInfo a, Times, NewestTimes)
+type BaseTestData f a = WithNow (f (PeriodInfo a), Times, NewestTimes)
 
 arbitraryNow :: (Now -> Gen a) -> Gen (WithNow a)
 arbitraryNow f = do
@@ -62,7 +63,7 @@ arbitraryNow f = do
 newtype Offset = Offset { unOffset :: Int }
 newtype NewestOffset = NewestOffset { unNewestOffset :: Int }
 
-arbitraryBaseTestData :: NumSubperiods a => Gen a -> (Offset -> Offset -> a -> Gen ([Offset], [NewestOffset])) -> Gen (BaseTestData a)
+arbitraryBaseTestData :: NumSubperiods a => Gen a -> (Offset -> Offset -> a -> Gen ([Offset], [NewestOffset])) -> Gen (BaseTestData Identity a)
 arbitraryBaseTestData genNumSubperiods genOffsets = arbitraryNow $ \now -> do
   offsetFrom <- Offset . hours <$> chooseInt (1, 24) -- chooseSecond (hours 1, weeks 1)
   numSubperiods <- genNumSubperiods
@@ -75,7 +76,7 @@ arbitraryBaseTestData genNumSubperiods genOffsets = arbitraryNow $ \now -> do
       newestTimes = flip addLocalTime now . secondsToNominalDiffTime . intToSeconds . negate . unNewestOffset <$> newestOffsets
 
   pure
-    ( (
+    ( Identity (
       Offsets $ PrettyTimeInterval . secondsToNominalDiffTime . intToSeconds . unOffset <$> NE.fromList [offsetFrom, offsetTo]
       , numSubperiods
       )
@@ -85,7 +86,7 @@ arbitraryBaseTestData genNumSubperiods genOffsets = arbitraryNow $ \now -> do
 
 -- |Generates an arbitrary input for `cleanup` such that the times are outside
 -- |the generated period (within certain bounds).
-arbitraryInputOutsideOfRange :: Gen (BaseTestData Float)
+arbitraryInputOutsideOfRange :: Gen (BaseTestData Identity Float)
 arbitraryInputOutsideOfRange = arbitraryBaseTestData
   (choose @Float (1.1, 4.9))
   $ \(Offset offsetFrom) (Offset offsetTo) _ -> do
@@ -98,7 +99,7 @@ arbitraryInputOutsideOfRange = arbitraryBaseTestData
 
 -- |Generates an arbitrary input for `cleanup` such that the number of times
 -- |matches the number of subperiods in the period.
-arbitraryInputWithinRange :: Gen (BaseTestData Int)
+arbitraryInputWithinRange :: Gen (BaseTestData Identity Int)
 arbitraryInputWithinRange = arbitraryBaseTestData
   (chooseInt (1, 10))
   $ \(Offset offsetFrom) (Offset offsetTo) numSubperiods -> do
@@ -110,7 +111,7 @@ arbitraryInputWithinRange = arbitraryBaseTestData
 -- |for the ease of writing tests.
 -- Sample output:
 -- `(2000-01-01 00:00:00,1999-12-31 23:59:59,(1 d,5 d),Sorted {getSorted = [1999-12-27 15:53:04,1999-12-28 00:50:13,1999-12-29 20:36:03,1999-12-30 14:32:27]},Sorted {getSorted = [1999-12-27 15:53:04,1999-12-27 16:53:56,1999-12-27 18:52:44,1999-12-27 19:24:03,1999-12-27 21:07:00,1999-12-27 22:50:25,1999-12-28 00:50:13,1999-12-28 00:55:15,1999-12-28 02:22:39,1999-12-28 08:52:45,1999-12-28 13:19:33,1999-12-29 20:36:03,1999-12-29 23:19:06,1999-12-30 14:32:27,1999-12-30 14:55:48,1999-12-30 17:32:40,1999-12-30 18:40:20,1999-12-30 19:25:54,1999-12-30 19:58:30,1999-12-30 21:17:13,1999-12-30 23:45:06]})`
-arbitraryInputWithinRangeSubperiods :: NumSubperiods a => Gen (BaseTestData a)
+arbitraryInputWithinRangeSubperiods :: NumSubperiods a => Gen (BaseTestData Identity a)
 arbitraryInputWithinRangeSubperiods = arbitraryBaseTestData
   choose_
   $ \offsetFrom _ numSubperiods -> do
@@ -156,9 +157,9 @@ quantifierSkipGeneratingOffsets SomePeriodsHaveTimes = chooseBool
 -- |properly-aligned periods, and the `times` and `newestTimes` inside
 -- |the generated periods. `quantifier` controls whether all the periods
 -- |have times.
-arbitraryMultiPeriodBaseTestData :: MultiPeriodTimesQuantifier -> Gen (BaseTestData Int)
+arbitraryMultiPeriodBaseTestData :: MultiPeriodTimesQuantifier -> Gen (BaseTestData Identity Int)
 arbitraryMultiPeriodBaseTestData quantifier = arbitraryNow $ \now -> do
-  pure ((Offsets . NE.fromList $ [PrettyTimeInterval 0], 0), Times . Sorted $ [], NewestTimes . Sorted $ [])
+  pure (Identity (Offsets . NE.fromList $ [PrettyTimeInterval 0], 0), Times . Sorted $ [], NewestTimes . Sorted $ [])
   --numPeriods <- chooseInt (1, 4)
   --offsetFrom <- Offset . hours <$> chooseInt (1, 10)
   --infos <- unfoldrM nextPeriod (offsetFrom, numPeriods)
