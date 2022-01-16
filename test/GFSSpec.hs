@@ -22,14 +22,6 @@ spec = do
       property $ \period now ->
         cleanup period [] now == []
 
-    it "never cleans up the newest time" $ do
-      property $ \period times now ->
-        let input = sort . getNonEmpty $ times
-            -- this is safe because @times@ is a @NonEmptyList LocalTime@
-            newest = last input
-            cleanedUp = cleanup period input now
-        in newest `notElem` cleanedUp
-
     it "never cleans up times in the future" $ do
       property $ \period times now ->
         let input = sort . getNonEmpty $ times
@@ -56,25 +48,21 @@ spec = do
     -- TODO does this property makes sense now?
     --it "cleans up such that there are no remaining elements closer than the period" $ do
 
-    it "cleans up items outside of the specified range (with exceptions)" $ do
-      property $ forAll arbitraryInputOutsideOfRange $ \(now, newest, ((range, _), times, _)) ->
-        let inputTimes = getSorted . unTimes $ times
-            -- we always have to separately add a newest time that is never removed
-            input = inputTimes ++ [newest]
+    it "cleans up items outside of the specified range" $ do
+      property $ forAll arbitraryInputOutsideOfRange $ \(now, ((range, _), times, _)) ->
+        let input = getSorted . unTimes $ times
             cleanedUp = cleanup range input now
 
             actual = sort cleanedUp
-            expected = inputTimes
-            description = concat ["Actual cleaned up: ", show actual, "; expected: ", show inputTimes]
+            expected = input
+            description = concat ["Actual cleaned up: ", show actual, "; expected: ", show input]
         in counterexample (intercalate "\n" [describeOffsets range now, description])
           $ actual == expected
 
     it "leaves no more times than there are subperiods with times" $ do
-      property $ forAll arbitraryInputWithinRange $ \(now, newest, ((range, Identity numSubperiods), times, _)) ->
-        let inputTimes = getSorted . unTimes $ times
-            -- we always have to separately add a newest time that is never removed
-            input = inputTimes ++ [newest]
-            rest = input \\ (cleanup range input now ++ [newest])
+      property $ forAll arbitraryInputWithinRange $ \(now, ((range, Identity numSubperiods), times, _)) ->
+        let input = getSorted . unTimes $ times
+            rest = input \\ cleanup range input now
 
             numberOfItems = concat ["Actual left items: ", show (length rest), "; expected: ", show numSubperiods]
         in counterexample (intercalate "\n" [describeOffsets range now, numberOfItems])
@@ -83,10 +71,9 @@ spec = do
           $ length rest <= ceiling_ numSubperiods
 
     it "leaves only the newest time in every subperiod" $ do
-      property $ forAll (arbitraryInputWithinRangeSubperiods @Float) $ \(now, newest, ((range, _), times, newestTimes)) ->
-        let inputTimes = getSorted . unTimes $ times
-            input = inputTimes ++ [newest]
-            rest = input \\ (cleanup range input now ++ [newest])
+      property $ forAll (arbitraryInputWithinRangeSubperiods @Float) $ \(now, ((range, _), times, newestTimes)) ->
+        let input = getSorted . unTimes $ times
+            rest = input \\ cleanup range input now
 
             description = concat ["Actual left: ", show rest, "; expected: ", show . getSorted . unNewestTimes $ newestTimes]
         in counterexample description $ rest == getSorted (unNewestTimes newestTimes)
@@ -96,9 +83,8 @@ spec = do
       -- is two because the number of subperiods is a floating-point number;
       -- if that number is an integer (i.e., all subperiods are of the same
       -- duration), then the max allowed removed times is only one!
-      property $ forAll (arbitraryInputWithinRangeSubperiods @Float) $ \(now, newest, ((range, _), times, newestTimes)) ->
-        let inputTimes = getSorted . unTimes $ times
-            input = inputTimes ++ [newest]
+      property $ forAll (arbitraryInputWithinRangeSubperiods @Float) $ \(now, ((range, _), times, newestTimes)) ->
+        let input = getSorted . unTimes $ times
             rest = input \\ cleanup range input now
 
             shiftedNow = unPrettyTimeInterval (NE.head $ unOffsets range) `addLocalTime` now
@@ -114,9 +100,8 @@ spec = do
         in counterexample description $ numExtraRemovedTimes <= 2
 
     it "removes no more than one time when `now` shifts forward by `offsetFrom` and all subperiods are equal" $ do
-      property $ forAll (arbitraryInputWithinRangeSubperiods @Int) $ \(now, newest, ((range, _), times, newestTimes)) ->
-        let inputTimes = getSorted . unTimes $ times
-            input = inputTimes ++ [newest]
+      property $ forAll (arbitraryInputWithinRangeSubperiods @Int) $ \(now, ((range, _), times, newestTimes)) ->
+        let input = getSorted . unTimes $ times
             rest = input \\ cleanup range input now
 
             shiftedNow = unPrettyTimeInterval (NE.head $ unOffsets range) `addLocalTime` now
@@ -138,21 +123,19 @@ spec = do
       prop_leavesOnlyNewestTimes SomePeriodsHaveTimes
 
     it "leaves only the newest time for a period starting at now" $ do
-      property $ forAll arbitraryInputWithinRangeFromNow $ \(now, newest, ((range, _), times, newestTimes)) ->
-        let inputTimes = getSorted . unTimes $ times
-            input = inputTimes ++ [newest]
-            rest = input \\ (cleanup range input now ++ [newest])
+      property $ forAll arbitraryInputWithinRangeFromNow $ \(now, ((range, _), times, newestTimes)) ->
+        let input = getSorted . unTimes $ times
+            rest = input \\ cleanup range input now
 
             description = concat ["Actual left: ", show rest, "; expected: ", show . getSorted . unNewestTimes $ newestTimes]
         in counterexample description $ rest == getSorted (unNewestTimes newestTimes)
 
 prop_leavesOnlyNewestTimes :: MultiPeriodTimesQuantifier -> Property
 prop_leavesOnlyNewestTimes quantifier =
-  property $ forAll (arbitraryMultiPeriodBaseTestData quantifier) $ \(now, newest, ((ranges, _), times, newestTimes)) ->
-    let inputTimes = getSorted . unTimes $ times
-        input = inputTimes ++ [newest]
+  property $ forAll (arbitraryMultiPeriodBaseTestData quantifier) $ \(now, ((ranges, _), times, newestTimes)) ->
+    let input = getSorted . unTimes $ times
         (cleaned, log) = runWriter $ cleanup_ ranges input now
-        rest = input \\ (cleaned ++ [newest])
+        rest = input \\ cleaned
 
         description = intercalate "\n" $ concat ["Actual left: ", show rest, "; expected: ", show . getSorted . unNewestTimes $ newestTimes] : log
     in counterexample description $ rest == getSorted (unNewestTimes newestTimes)

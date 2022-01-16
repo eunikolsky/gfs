@@ -23,14 +23,13 @@ import Test.QuickCheck
 -- different detalization of data and combining all the different variants
 -- into one type would make the test code more complicated.
 type Now = LocalTime
-type Newest = LocalTime
 
 newtype Times = Times { unTimes :: SortedList LocalTime }
   deriving Show
 newtype NewestTimes = NewestTimes { unNewestTimes :: SortedList LocalTime }
   deriving Show
 
-type WithNow a = (Now, Newest, a)
+type WithNow a = (Now, a)
 
 class Num a => NumSubperiods a where
   ceiling_ :: a -> Int
@@ -55,11 +54,10 @@ arbitraryNow :: (Now -> Gen a) -> Gen (WithNow a)
 arbitraryNow f = do
   -- TODO a fixed date is easier for development; start from a random value and shrink towards 2000-01-01?
   let now = LocalTime (fromGregorian 2000 01 01) midnight
-      newest = addLocalTime (secondsToNominalDiffTime (-1 :: Pico)) now
 
   x <- f now
 
-  pure (now, newest, x)
+  pure (now, x)
 
 newtype Offset = Offset { unOffset :: Int }
 newtype NewestOffset = NewestOffset { unNewestOffset :: Int }

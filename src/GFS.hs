@@ -77,13 +77,15 @@ type Period_ = (Offset, Offset)
 -- |  @[(now-2d, now-1d), (now-3d, now-2d), …, (now-6d, now-5d), (now-6.5d, now-6d)]@;
 -- |* in each period, only the newest time is left.
 -- |
--- |__Note__: the most recent time is never cleaned up.
+-- |__Note__: @periods@ can start with zero, which has the effect of leaving
+-- |the most recent time between @now@ and the next period instead of removing
+-- |all times in that range.
 -- |__Note__: times that are in the future (bigger than @now@) are never removed
 -- |(for safety).
 -- |
 -- |__Assumption__: @times@ is sorted in the ascending order (oldest to newest).
 -- |__Assumption__: @periods@ is sorted in the ascending order (smaller to
--- |bigger), e.g.: @[1d, 7d, 31d, 1y]@.
+-- |bigger), e.g.: @[0, 1d, 7d, 31d, 1y]@.
 cleanup :: Offsets -> [LocalTime] -> LocalTime -> [LocalTime]
 cleanup offsets times = fst . runWriter . cleanup_ offsets times
 
@@ -167,7 +169,7 @@ dropUntil f = dropWhile (not . f)
 
 cleanup_ :: Offsets -> [LocalTime] -> LocalTime -> L [LocalTime]
 cleanup_ os@(Offsets offsets) times now
-  = consider . leaveNewest . takeWhile (before now) $ times
+  = consider . takeWhile (before now) $ times
   where
     combinedPeriod :: Period_
     combinedPeriod = (NE.head offsets, NE.last offsets)
@@ -189,7 +191,6 @@ cleanup_ os@(Offsets offsets) times now
         isInside (PrettyTimeInterval from, PrettyTimeInterval to) time = time >= addLocalTime (-to) now && time <= addLocalTime (-from) now
 
     before = flip (<=)
-    leaveNewest = dropLast
 
 -- |Returns the list without the last element.
 dropLast :: [a] -> [a]
