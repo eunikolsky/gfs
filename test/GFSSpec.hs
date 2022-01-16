@@ -137,6 +137,15 @@ spec = do
     it "correctly skips periods without any times" $ do
       prop_leavesOnlyNewestTimes SomePeriodsHaveTimes
 
+    it "leaves only the newest time for a period starting at now" $ do
+      property $ forAll arbitraryInputWithinRangeFromNow $ \(now, newest, ((range, _), times, newestTimes)) ->
+        let inputTimes = getSorted . unTimes $ times
+            input = inputTimes ++ [newest]
+            rest = input \\ (cleanup range input now ++ [newest])
+
+            description = concat ["Actual left: ", show rest, "; expected: ", show . getSorted . unNewestTimes $ newestTimes]
+        in counterexample description $ rest == getSorted (unNewestTimes newestTimes)
+
 prop_leavesOnlyNewestTimes :: MultiPeriodTimesQuantifier -> Property
 prop_leavesOnlyNewestTimes quantifier =
   property $ forAll (arbitraryMultiPeriodBaseTestData quantifier) $ \(now, newest, ((ranges, _), times, newestTimes)) ->

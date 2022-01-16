@@ -120,6 +120,32 @@ arbitraryInputWithinRangeSubperiods = arbitraryBaseTestData
 
       pure (concat offsets ++ (Offset . unNewestOffset <$> newestOffsets), newestOffsets)
 
+-- |Generates an arbitrary input for `cleanup` with one period starting at `now`
+-- |and multiple times there.
+arbitraryInputWithinRangeFromNow :: Gen (BaseTestData Identity Int)
+arbitraryInputWithinRangeFromNow = arbitraryNow $ \now -> do
+  let offsetFrom = 0
+      numSubperiods = 1
+  offsetTo <- hours <$> chooseInt (1, 24)
+
+  (offsets, newestOffsets) <- do
+      newestOffset <- choose (offsetFrom, offsetTo)
+      numOffsets <- chooseInt (1, 10)
+      offsets <- vectorOf numOffsets $ choose (newestOffset, offsetTo)
+
+      pure (offsets ++ [newestOffset], [newestOffset])
+
+  let times = flip addLocalTime now . secondsToNominalDiffTime . intToSeconds . negate <$> offsets
+      newestTimes = flip addLocalTime now . secondsToNominalDiffTime . intToSeconds . negate <$> newestOffsets
+
+  pure
+    ( ( Offsets $ PrettyTimeInterval . secondsToNominalDiffTime . intToSeconds <$> NE.fromList [offsetFrom, offsetTo]
+      , Identity numSubperiods
+      )
+    , (Times . Sorted $ sort times)
+    , (NewestTimes . Sorted $ sort newestTimes)
+    )
+
 -- |Generates arbitrary time offsets (newest offsets are also included in all
 -- |offsets) based on the initial offset of a period and the number of subperiod
 -- |range in that period.

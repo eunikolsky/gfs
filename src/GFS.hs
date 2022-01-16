@@ -124,6 +124,7 @@ allSubperiodOffsets (Offsets offsets) =
     mergeOffsets :: [NE.NonEmpty Offset] -> [Offset]
     mergeOffsets offsetsList = maybe [] (NE.toList . join) $ NE.nonEmpty offsetsList
     subperiodEnds :: (Offset, Offset) -> NE.NonEmpty Offset
+    subperiodEnds (PrettyTimeInterval 0, to) = NE.fromList [to]
     subperiodEnds (PrettyTimeInterval from, PrettyTimeInterval to) =
       NE.fromList $ unfoldr
         (\off -> if off >= to
