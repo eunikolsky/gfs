@@ -139,11 +139,10 @@ spec = do
 
 prop_leavesOnlyNewestTimes :: MultiPeriodTimesQuantifier -> Property
 prop_leavesOnlyNewestTimes quantifier =
-  property $ forAll (arbitraryMultiPeriodBaseTestData quantifier) $ \(now, newest, (periodInfos, times, newestTimes)) ->
+  property $ forAll (arbitraryMultiPeriodBaseTestData quantifier) $ \(now, newest, ((ranges, _), times, newestTimes)) ->
     let inputTimes = getSorted . unTimes $ times
         input = inputTimes ++ [newest]
-        ranges = fst periodInfos
-        (cleaned, log) = runWriter $ cleanup_ (ranges) input now
+        (cleaned, log) = runWriter $ cleanup_ ranges input now
         rest = input \\ (cleaned ++ [newest])
 
         description = intercalate "\n" $ concat ["Actual left: ", show rest, "; expected: ", show . getSorted . unNewestTimes $ newestTimes] : log
