@@ -1,5 +1,5 @@
 module GFS
-    ( Period
+    ( Offsets(..)
     , PrettyTimeInterval(..)
     , cleanup
     , cleanup_
@@ -17,6 +17,7 @@ import Data.Time.LocalTime
 -- |Warning: seconds are always displayed as integers.
 newtype PrettyTimeInterval = PrettyTimeInterval
   { unPrettyTimeInterval :: NominalDiffTime }
+  deriving (Eq, Ord)
 
 instance Show PrettyTimeInterval where
   show (PrettyTimeInterval diffTime) = formatUnits
@@ -49,8 +50,13 @@ instance Show PrettyTimeInterval where
 
 -- TODO it's somewhat strange to force a pretty time interval instead of a
 -- regular one…
-type OffsetFrom = PrettyTimeInterval
-type OffsetTo = PrettyTimeInterval
+type Offset = PrettyTimeInterval
+--type OffsetTo = PrettyTimeInterval
+
+newtype Offsets = Offsets { unOffsets :: NE.NonEmpty Offset }
+
+instance Show Offsets where
+  show os = "Offsets " ++ (show . NE.toList . unOffsets $ os)
 
 -- FIXME clarify the terms "range" vs "period"! and the direction OffsetFrom <-> OffsetTo!
 
@@ -59,7 +65,7 @@ type OffsetTo = PrettyTimeInterval
 -- |positive even though they represent negative offsets from "now".
 -- |
 -- |E.g.: @(1d, 7d)@ means a range of @[now - 7d … now - 1d]@.
-type Period = (OffsetFrom, OffsetTo)
+type Period_ = (Offset, Offset)
 
 -- |The main cleanup function that takes a sorted list of @times@ and returns
 -- |the ones that should be removed to satisfy the requirements of the GFS
@@ -77,45 +83,93 @@ type Period = (OffsetFrom, OffsetTo)
 -- |
 -- |__Assumption__: @times@ is sorted in the ascending order (oldest to newest).
 -- |__Assumption__: @periods@ is sorted in the ascending order (smaller to
--- |bigger) and the start of the next period is the end of the previous period,
--- |e.g.: @[(1d, 7d), (7d, 31d), (31d, 1y)]@.
-cleanup :: NE.NonEmpty Period -> [LocalTime] -> LocalTime -> [LocalTime]
-cleanup periods times = fst . runWriter . cleanup_ periods times
+-- |bigger), e.g.: @[1d, 7d, 31d, 1y]@.
+cleanup :: Offsets -> [LocalTime] -> LocalTime -> [LocalTime]
+cleanup offsets times = fst . runWriter . cleanup_ offsets times
 
 type L = Writer [String]
 
-cleanup_ :: NE.NonEmpty Period -> [LocalTime] -> LocalTime -> L [LocalTime]
-cleanup_ periods times now
+-- |Semantically equivalent to `Periods + LocalTime`.
+type TimePeriod = (LocalTime, LocalTime)
+
+-- |Converts `offsets` into times by subtracting them from `now`.
+-- |`offsets` are assumed to be sorted smaller to bigger; return
+-- |times are also sorted small to bigger.
+-- |E.g.:
+-- |- `now = 2022-01-10 00:00`;
+-- |- `offsets = [0, 12h, 1d, 10d]`;
+-- |=> `[2021-12-31 00:00, 2022-01-09 00:00, 2022-01-09 12:00, 2022-01-10 00:00]`.
+timeDelimiters :: LocalTime -> Offsets -> NE.NonEmpty LocalTime
+timeDelimiters now (Offsets offsets) = orderAsc times
+  where
+    orderAsc = NE.reverse
+    times = (`addLocalTime` now) . negate . unPrettyTimeInterval <$> offsets
+
+-- |Returns a list of offsets of all subperiods from the list of period
+-- |`offsets`. The returned offsets define the boundaries where only a single
+-- |time should be left.
+-- |E.g.:
+-- |- `offsets = [8h, 24h, 3d, 10d]` (that is, the first period `8h…24h` has
+-- |  three subperiods with offsets `[8h, 16h, 24h]`, the second period
+-- |  `1d…3d` has two subperiods with offsets `[1d, 2d, 3d]`, and the third
+-- |  period `3d…10d` has three subperiods (the last one is shorter) with
+-- |  offsets `[3d, 6d, 9d, 10d]`;
+-- |=> `[8h, 16h, 1d, 2d, 3d, 6d, 9d, 10d]`.
+allSubperiodOffsets :: Offsets -> Offsets
+allSubperiodOffsets (Offsets offsets) =
+  prependInitialOffset . mergeOffsets $ subperiodEnds <$> adjacentPairs offsets
+  where
+    prependInitialOffset :: [Offset] -> Offsets
+    prependInitialOffset = Offsets . NE.fromList . (NE.head offsets :)
+    mergeOffsets :: [NE.NonEmpty Offset] -> [Offset]
+    mergeOffsets offsetsList = maybe [] (NE.toList . join) $ NE.nonEmpty offsetsList
+    subperiodEnds :: (Offset, Offset) -> NE.NonEmpty Offset
+    subperiodEnds (PrettyTimeInterval from, PrettyTimeInterval to) =
+      NE.fromList $ unfoldr
+        (\off -> if off >= to
+          then Nothing
+          else Just . dup PrettyTimeInterval $ min (off + from) to)
+        from
+
+dup :: (a -> b) -> a -> (b, a)
+dup f x = (f x, x)
+
+-- |Returns pairs of adjacent elements in non-empty `list`. The return type
+-- |is possibly an empty list for the case when input `list` has one element.
+adjacentPairs :: NE.NonEmpty a -> [(a, a)]
+adjacentPairs xs = NE.toList xs `zip` NE.tail xs
+
+type InTime = LocalTime
+type RmTime = LocalTime
+
+type CleanupInsideState = ([LocalTime], [RmTime])
+
+-- |Determines which of the given @intimes@ should be cleaned up (they are
+-- |returned from this function) so that only the newest time is left
+-- |in each of the periods delimited by @times@. This is the core of the
+-- |GFS algorithm.
+-- |__Assumption__: all @intimes@ are within the @times@.
+cleanupInsideTimes :: [LocalTime] -> [InTime] -> [RmTime]
+cleanupInsideTimes times = snd . foldr check (reverse times, [])
+  where
+    check :: InTime -> CleanupInsideState -> CleanupInsideState
+    check intime (times@(time:rest), rmtimes) =
+      if intime >= time
+      then (times, intime:rmtimes)
+      else (nexttimes, rmtimes)
+      where
+        nexttimes = dropUntil (\t -> intime >= t) rest
+    check intime ([], rmtimes) = ([], intime:rmtimes)
+
+dropUntil :: (a -> Bool) -> [a] -> [a]
+dropUntil f = dropWhile (not . f)
+
+cleanup_ :: Offsets -> [LocalTime] -> LocalTime -> L [LocalTime]
+cleanup_ os@(Offsets offsets) times now
   = consider . leaveNewest . takeWhile (before now) $ times
   where
-    numSubperiods :: Period -> Int
-    numSubperiods (PrettyTimeInterval from, PrettyTimeInterval to)  = ceiling . nominalDiffTimeToSeconds $ (to - from) / from
-
-    getSubperiods :: Period -> [(LocalTime, LocalTime)]
-    getSubperiods period@(PrettyTimeInterval from, _) = adjacentPairs . reverse $
-      map
-        (\index -> (addLocalTime (-from * (fromIntegral index + 1)) now))
-        [0..numSubperiods period]
-
-    timePeriods :: [(LocalTime, LocalTime)]
-    timePeriods = (\(PrettyTimeInterval from, PrettyTimeInterval to) ->
-      (addLocalTime (-to) now, addLocalTime (-from) now))
-      <$> NE.toList periods
-
-    withinOnePeriod = withinOneSubperiod
-
-    withinOneSubperiod :: [(LocalTime, LocalTime)] -> LocalTime -> LocalTime -> Bool
-    withinOneSubperiod subperiods t0 t1 = any (bothInsideSubperiod t0 t1) subperiods
-
-    bothInsideSubperiod :: LocalTime -> LocalTime -> (LocalTime, LocalTime) -> Bool
-    bothInsideSubperiod t0 t1 subperiod = t0 `insideSubperiod` subperiod && t1 `insideSubperiod` subperiod
-      where t `insideSubperiod` (from, to) = t >= from && t < to
-
-    combinedPeriod :: Period
-    combinedPeriod = (earliestFrom, latestTo)
-      where
-        (earliestFrom, _) = NE.head periods
-        (_, latestTo) = NE.last periods
+    combinedPeriod :: Period_
+    combinedPeriod = (NE.head offsets, NE.last offsets)
 
     -- Any of the input times here can be cleaned up.
     consider :: [LocalTime] -> L [LocalTime]
@@ -124,52 +178,19 @@ cleanup_ periods times now
         --"numSubperiods " <> show numSubperiods,
         --"subperiods " <> show subperiods,
         "considering " <> show times]
-      let grouped = zip (NE.toList . NE.reverse $ periods) $ groupBy (withinOnePeriod timePeriods) times
-          outside = outsideOfPeriod combinedPeriod times
-      insideTimes <- concat <$> traverse (\(period, times) -> insidePeriod period times) grouped
+      let (inside, outside) = partition (isInside combinedPeriod) times
+          delimiters = NE.toList . timeDelimiters now $ allSubperiodOffsets os
+          insideTimes = cleanupInsideTimes delimiters inside
       pure $ outside ++ insideTimes
 
       where
-        isInside :: Period -> LocalTime -> Bool
+        isInside :: Period_ -> LocalTime -> Bool
         isInside (PrettyTimeInterval from, PrettyTimeInterval to) time = time >= addLocalTime (-to) now && time <= addLocalTime (-from) now
-
-        outsideOfPeriod :: Period -> [LocalTime] -> [LocalTime]
-        outsideOfPeriod period = filter (not . isInside period)
-        insidePeriod :: Period -> [LocalTime] -> L [LocalTime]
-        insidePeriod period times = do
-          let subperiods = getSubperiods period
-          tell ["insidePeriod " <> show period]
-          filtered <- log "filter" (filter (isInside period)) times
-          grouped <- log "groupBy" (groupBy (withinOneSubperiod subperiods)) filtered
-          exceptNewest <- log "not newest" (map leaveNewest) grouped
-          log "concat" concat exceptNewest
-
-        -- filter :: (a -> Bool) -> [a] -> [a]
-        -- filter inside :: [LocalTime] -> [LocalTime]
-        -- log (filter inside) :: [LocalTime] -> L [LocalTime]
-        -- groupBy x :: [LocalTime] -> [[LocalTime]]
-        -- log (groupBy x) :: [LocalTime] -> L [[LocalTime]]
-
-        log :: (Show a, Show b) => String -> (a -> b) -> a -> L b
-        log n f x = do
-          let r = f x
-          tell [n <> ": " <> show x <> " => " <> show r]
-          pure r
 
     before = flip (<=)
     leaveNewest = dropLast
-    leaveAtMost = drop
 
 -- |Returns the list without the last element.
 dropLast :: [a] -> [a]
 dropLast [] = []
 dropLast xs = init xs
-
--- FIXME deduplicate
--- |Returns a list of adjacent pairs from the source list.
-adjacentPairs :: [a] -> [(a, a)]
-adjacentPairs [] = []
-adjacentPairs xs = zip xs (tail xs)
-
--- oldest remaining time so far and a list of dropped times
-type CleanupState = (LocalTime, [LocalTime])
