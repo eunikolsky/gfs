@@ -96,15 +96,15 @@ type TimePeriod = (LocalTime, LocalTime)
 
 -- |Converts `offsets` into times by subtracting them from `now`.
 -- |`offsets` are assumed to be sorted smaller to bigger; return
--- |times are also sorted small to bigger.
+-- |times are thus sorted backwards in time.
 -- |E.g.:
 -- |- `now = 2022-01-10 00:00`;
 -- |- `offsets = [0, 12h, 1d, 10d]`;
--- |=> `[2021-12-31 00:00, 2022-01-09 00:00, 2022-01-09 12:00, 2022-01-10 00:00]`.
+-- |=> `[2022-01-10 00:00, 2022-01-09 12:00, 2022-01-09 00:00, 2021-12-31 00:00]`.
 timeDelimiters :: LocalTime -> Offsets -> NE.NonEmpty LocalTime
-timeDelimiters now (Offsets offsets) = orderAsc times
+timeDelimiters now (Offsets offsets) = orderDesc times
   where
-    orderAsc = NE.reverse
+    orderDesc = id -- just an explicit reminder of the resulting output order
     times = (`addLocalTime` now) . negate . unPrettyTimeInterval <$> offsets
 
 -- |Returns a list of offsets of all subperiods from the list of period
@@ -153,7 +153,7 @@ type CleanupInsideState = ([LocalTime], [RmTime])
 -- |GFS algorithm.
 -- |__Assumption__: all @intimes@ are within the @times@.
 cleanupInsideTimes :: [LocalTime] -> [InTime] -> [RmTime]
-cleanupInsideTimes times = snd . foldr check (reverse times, [])
+cleanupInsideTimes times = snd . foldr check (times, [])
   where
     check :: InTime -> CleanupInsideState -> CleanupInsideState
     check intime (times@(time:rest), rmtimes) =
