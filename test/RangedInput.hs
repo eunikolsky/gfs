@@ -157,10 +157,8 @@ quantifierSkipGeneratingOffsets SomePeriodsHaveTimes = chooseBool
 -- |properly-aligned periods, and the `times` and `newestTimes` inside
 -- |the generated periods. `quantifier` controls whether all the periods
 -- |have times.
-arbitraryMultiPeriodBaseTestData :: MultiPeriodTimesQuantifier -> Gen (BaseTestData [] Int)
+arbitraryMultiPeriodBaseTestData :: MultiPeriodTimesQuantifier -> Gen (BaseTestData [] Float)
 arbitraryMultiPeriodBaseTestData quantifier = arbitraryNow $ \now -> do
-  --pure (Identity (Offsets . NE.fromList $ [PrettyTimeInterval 0], 0), Times . Sorted $ [], NewestTimes . Sorted $ [])
-
   numPeriods <- chooseInt (1, 4)
   offsetFrom <- Offset . hours <$> chooseInt (1, 10)
   infos <- unfoldrM nextPeriod (offsetFrom, numPeriods)
@@ -177,7 +175,7 @@ arbitraryMultiPeriodBaseTestData quantifier = arbitraryNow $ \now -> do
   pure (periodInfo, Times . Sorted $ sort times, NewestTimes . Sorted $ sort newestTimes)
 
   where
-    nextPeriod :: (Offset, Int) -> Gen (Maybe ((PeriodInfo Identity Int, [NewestOffset], [Offset]), (Offset, Int)))
+    nextPeriod :: (Offset, Int) -> Gen (Maybe ((PeriodInfo Identity Float, [NewestOffset], [Offset]), (Offset, Int)))
     nextPeriod (offsetFrom, numPeriods) =
       if numPeriods == 0
       then pure Nothing
@@ -186,10 +184,10 @@ arbitraryMultiPeriodBaseTestData quantifier = arbitraryNow $ \now -> do
         let nextOffsetFrom = offsetTo
         pure . Just $ (info, (nextOffsetFrom, numPeriods - 1))
 
-    generatePeriod :: Offset -> Gen (Offset, (PeriodInfo Identity Int, [NewestOffset], [Offset]))
+    generatePeriod :: Offset -> Gen (Offset, (PeriodInfo Identity Float, [NewestOffset], [Offset]))
     generatePeriod oFrom@(Offset offsetFrom) = do
-      numSubperiods <- chooseInt (1, 5)
-      let offsetTo = offsetFrom * (numSubperiods + 1)
+      numSubperiods <- choose_
+      let offsetTo = ceiling_ $ fromIntegral offsetFrom * (numSubperiods + 1)
 
       skipGeneratingOffsets <- quantifierSkipGeneratingOffsets quantifier
 
