@@ -92,11 +92,6 @@ type L = Writer [String]
 -- |Semantically equivalent to `Periods + LocalTime`.
 type TimePeriod = (LocalTime, LocalTime)
 
---cleanupInside :: Ord a => [a] -> [a] -> [a]
---cleanupInside times = snd . foldl' check (reverse times, [])
-  --where
-    --check :: a -> State -> State
-
 -- |Converts `offsets` into times by subtracting them from `now`.
 -- |`offsets` are assumed to be sorted smaller to bigger; return
 -- |times are also sorted small to bigger.
@@ -144,19 +139,35 @@ dup f x = (f x, x)
 adjacentPairs :: NE.NonEmpty a -> [(a, a)]
 adjacentPairs xs = NE.toList xs `zip` NE.tail xs
 
+type InTime = LocalTime
+type RmTime = LocalTime
+
+type CleanupInsideState = ([LocalTime], [RmTime])
+
+-- |Determines which of the given @intimes@ should be cleaned up (they are
+-- |returned from this function) so that only the newest time is left
+-- |in each of the periods delimited by @times@. This is the core of the
+-- |GFS algorithm.
+-- |__Assumption__: all @intimes@ are within the @times@.
+cleanupInsideTimes :: [LocalTime] -> [InTime] -> [RmTime]
+cleanupInsideTimes times = snd . foldr check (reverse times, [])
+  where
+    check :: InTime -> CleanupInsideState -> CleanupInsideState
+    check intime (times@(time:rest), rmtimes) =
+      if intime >= time
+      then (times, intime:rmtimes)
+      else (nexttimes, rmtimes)
+      where
+        nexttimes = dropUntil (\t -> intime >= t) rest
+    check intime ([], rmtimes) = ([], intime:rmtimes)
+
+dropUntil :: (a -> Bool) -> [a] -> [a]
+dropUntil f = dropWhile (not . f)
+
 cleanup_ :: Offsets -> [LocalTime] -> LocalTime -> L [LocalTime]
-cleanup_ (Offsets offsets) times now
+cleanup_ os@(Offsets offsets) times now
   = consider . leaveNewest . takeWhile (before now) $ times
   where
-    --numSubperiods :: Period -> Int
-    --numSubperiods (PrettyTimeInterval from, PrettyTimeInterval to)  = ceiling . nominalDiffTimeToSeconds $ (to - from) / from
-
-    --getSubperiods :: Period -> [TimePeriod]
-    --getSubperiods period@(PrettyTimeInterval from, _) = adjacentPairs . reverse $
-      --map
-        --(\index -> (addLocalTime (-from * (fromIntegral index + 1)) now))
-        --[0..numSubperiods period]
-
     combinedPeriod :: Period_
     combinedPeriod = (NE.head offsets, NE.last offsets)
 
@@ -167,53 +178,19 @@ cleanup_ (Offsets offsets) times now
         --"numSubperiods " <> show numSubperiods,
         --"subperiods " <> show subperiods,
         "considering " <> show times]
-      let --grouped = zip (NE.toList . NE.reverse $ periods) $ groupBy (withinOnePeriod timePeriods) times
-          outside = outsideOfPeriod combinedPeriod times
-      --insideTimes <- concat <$> traverse (\(period, times) -> insidePeriod period times) grouped
-      pure outside -- ++ insideTimes
+      let (inside, outside) = partition (isInside combinedPeriod) times
+          delimiters = NE.toList . timeDelimiters now $ allSubperiodOffsets os
+          insideTimes = cleanupInsideTimes delimiters inside
+      pure $ outside ++ insideTimes
 
       where
         isInside :: Period_ -> LocalTime -> Bool
         isInside (PrettyTimeInterval from, PrettyTimeInterval to) time = time >= addLocalTime (-to) now && time <= addLocalTime (-from) now
 
-        outsideOfPeriod :: Period_ -> [LocalTime] -> [LocalTime]
-        outsideOfPeriod period = filter (not . isInside period)
-
-        --insidePeriod :: Period -> [LocalTime] -> L [LocalTime]
-        --insidePeriod period times = do
-          --let subperiods = getSubperiods period
-          --tell ["insidePeriod " <> show period]
-          --filtered <- log "filter" (filter (isInside period)) times
-          --grouped <- log "groupBy" (groupBy (withinOneSubperiod subperiods)) filtered
-          --exceptNewest <- log "not newest" (map leaveNewest) grouped
-          --log "concat" concat exceptNewest
-
-        -- filter :: (a -> Bool) -> [a] -> [a]
-        -- filter inside :: [LocalTime] -> [LocalTime]
-        -- log (filter inside) :: [LocalTime] -> L [LocalTime]
-        -- groupBy x :: [LocalTime] -> [[LocalTime]]
-        -- log (groupBy x) :: [LocalTime] -> L [[LocalTime]]
-
-        log :: (Show a, Show b) => String -> (a -> b) -> a -> L b
-        log n f x = do
-          let r = f x
-          tell [n <> ": " <> show x <> " => " <> show r]
-          pure r
-
     before = flip (<=)
     leaveNewest = dropLast
-    leaveAtMost = drop
 
 -- |Returns the list without the last element.
 dropLast :: [a] -> [a]
 dropLast [] = []
 dropLast xs = init xs
-
--- FIXME deduplicate
--- |Returns a list of adjacent pairs from the source list.
---adjacentPairs :: [a] -> [(a, a)]
---adjacentPairs [] = []
---adjacentPairs xs = zip xs (tail xs)
-
--- oldest remaining time so far and a list of dropped times
-type CleanupState = (LocalTime, [LocalTime])
