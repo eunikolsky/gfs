@@ -131,7 +131,7 @@ spec = do
         in counterexample description $ rest == getSorted (unNewestTimes newestTimes)
 
     context "boundary times" $ do
-      it "now is never cleaned up" $ do
+      it "never cleans up now" $ do
         property $ \period times now ->
           let input = sort . (now:) . getNonEmpty $ times
               cleanedUp = cleanup period input now
