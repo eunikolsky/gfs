@@ -130,6 +130,13 @@ spec = do
             description = concat ["Actual left: ", show rest, "; expected: ", show . getSorted . unNewestTimes $ newestTimes]
         in counterexample description $ rest == getSorted (unNewestTimes newestTimes)
 
+    context "boundary times" $ do
+      it "now is never cleaned up" $ do
+        property $ \period times now ->
+          let input = sort . (now:) . getNonEmpty $ times
+              cleanedUp = cleanup period input now
+          in now `notElem` cleanedUp
+
 prop_leavesOnlyNewestTimes :: MultiPeriodTimesQuantifier -> Property
 prop_leavesOnlyNewestTimes quantifier =
   property $ forAll (arbitraryMultiPeriodBaseTestData quantifier) $ \(now, ((ranges, _), times, newestTimes)) ->

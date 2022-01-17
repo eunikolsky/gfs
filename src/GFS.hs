@@ -80,8 +80,8 @@ type Period_ = (Offset, Offset)
 -- |__Note__: @periods@ can start with zero, which has the effect of leaving
 -- |the most recent time between @now@ and the next period instead of removing
 -- |all times in that range.
--- |__Note__: times that are in the future (bigger than @now@) are never removed
--- |(for safety).
+-- |__Note__: times that are in the future (bigger than or equal to @now@) are
+-- |never removed.
 -- |
 -- |__Assumption__: @times@ is sorted in the ascending order (oldest to newest).
 -- |__Assumption__: @periods@ is sorted in the ascending order (smaller to
@@ -190,7 +190,7 @@ cleanup_ os@(Offsets offsets) times now
         isInside :: Period_ -> LocalTime -> Bool
         isInside (PrettyTimeInterval from, PrettyTimeInterval to) time = time >= addLocalTime (-to) now && time <= addLocalTime (-from) now
 
-    before = flip (<=)
+    before = flip (<)
 
 -- |Returns the list without the last element.
 dropLast :: [a] -> [a]
