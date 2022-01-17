@@ -127,9 +127,9 @@ arbitraryInputWithinRangeFromNow = arbitraryNow $ \now -> do
   offsetTo <- hours <$> chooseInt (1, 24)
 
   (offsets, newestOffsets) <- do
-      newestOffset <- choose (offsetFrom, offsetTo)
+      newestOffset <- choose (offsetFrom + 1, offsetTo)
       numOffsets <- chooseInt (1, 10)
-      offsets <- vectorOf numOffsets $ choose (newestOffset, offsetTo)
+      offsets <- vectorOf numOffsets $ choose (newestOffset + 1, offsetTo)
 
       pure (offsets ++ [newestOffset], [newestOffset])
 
