@@ -17,7 +17,7 @@ import Test.QuickCheck hiding (within)
 
 spec :: Spec
 spec = do
-  describe "cleanup" $ do
+  describe "cleanup" $ parallel $ do
     it "returns nothing for empty input" $
       property $ \period now ->
         cleanup period [] now == []
