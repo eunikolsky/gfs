@@ -144,7 +144,10 @@ prop_leavesOnlyNewestTimes quantifier =
         (cleaned, log) = runWriter $ cleanup_ ranges input now
         rest = input \\ cleaned
 
-        description = intercalate "\n" $ concat ["Actual left: ", show rest, "; expected: ", show . getSorted . unNewestTimes $ newestTimes] : log
+        description = intercalate "\n"
+          $ concat ["Actual left: ", show rest, "; expected: ", show . getSorted . unNewestTimes $ newestTimes]
+          : describeOffsets ranges now
+          : log
     in counterexample description $ rest == getSorted (unNewestTimes newestTimes)
 
 -- |Describes @offsets@ as times relative to @now@.

@@ -101,7 +101,7 @@ arbitraryInputWithinRange :: Gen (BaseTestData Identity Int)
 arbitraryInputWithinRange = arbitraryBaseTestData
   (chooseInt (1, 10))
   $ \(Offset offsetFrom) (Offset offsetTo) numSubperiods -> do
-    offsets <- vectorOf numSubperiods (Offset <$> choose (offsetFrom, offsetTo))
+    offsets <- vectorOf numSubperiods (Offset <$> choose (offsetFrom + 1, offsetTo - 1))
     pure (offsets, [])
 
 -- |Generates an arbitrary input for `cleanup` such that each subperiod has at
@@ -127,9 +127,9 @@ arbitraryInputWithinRangeFromNow = arbitraryNow $ \now -> do
   offsetTo <- hours <$> chooseInt (1, 24)
 
   (offsets, newestOffsets) <- do
-      newestOffset <- choose (offsetFrom + 1, offsetTo)
+      newestOffset <- choose (offsetFrom + 1, offsetTo - 1)
       numOffsets <- chooseInt (1, 10)
-      offsets <- vectorOf numOffsets $ choose (newestOffset + 1, offsetTo)
+      offsets <- vectorOf numOffsets $ choose (newestOffset + 1, offsetTo - 1)
 
       pure (offsets ++ [newestOffset], [newestOffset])
 
@@ -151,8 +151,8 @@ arbitraryInputWithinRangeFromNow = arbitraryNow $ \now -> do
 -- Example:
 --  * `offsetFrom = hours 4`
 --  * `numSubperiod = (3, 3.5)`
---  * => returns offsets in `[hours (4 * (3 + 1)), hours (4 * (3.5 + 1))] =
---       = [hours 16, hours 18]`
+--  * => returns offsets in `(hours (4 * (3 + 1)), hours (4 * (3.5 + 1))) =
+--       = (hours 16, hours 18)`
 --
 -- Note: the extra `+ 1` comes from the fact that the subperiod itself is shifted
 -- from "zero" (i.e., "now") by `offsetFrom`, and we need to generate the
@@ -161,9 +161,9 @@ arbitraryOffsets :: NumSubperiods a => Offset -> (a, a) -> Gen (NewestOffset, [O
 arbitraryOffsets (Offset offsetFrom) (numSubperiodFrom, numSubperiodTo) = do
   let subperiodFrom = ceiling_ $ fromIntegral offsetFrom * (numSubperiodFrom + 1)
       subperiodTo = ceiling_ $ fromIntegral offsetFrom * (numSubperiodTo + 1)
-  newestOffset <- choose (subperiodFrom + 1, subperiodTo)
+  newestOffset <- choose (subperiodFrom + 1, subperiodTo - 1)
   numOffsets <- chooseInt (1, 2)
-  offsets <- fmap (fmap Offset) . vectorOf numOffsets $ choose (newestOffset, subperiodTo)
+  offsets <- fmap (fmap Offset) . vectorOf numOffsets $ choose (newestOffset + 1, subperiodTo - 1)
   pure (NewestOffset newestOffset, offsets)
 
 -- |A control parameter for `arbitraryMultiPeriodBaseTestData` that defines
