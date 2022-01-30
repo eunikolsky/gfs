@@ -62,7 +62,16 @@ arbitraryNow f = do
 newtype Offset = Offset { unOffset :: Int }
 newtype NewestOffset = NewestOffset { unNewestOffset :: Int }
 
-arbitraryBaseTestData :: NumSubperiods a => Gen a -> (Offset -> Offset -> a -> Gen ([Offset], [NewestOffset])) -> Gen (BaseTestData Identity a)
+-- |Reverses a backward-sorted list. This is necessary when a list of sorted
+-- |offsets is subtracted from a bigger `now`, so the resulting list is now
+-- |sorted backwards. Example:
+-- |`offsets = Sorted { [1, 10, 100] }`
+-- |`now = 0`
+-- |=> `result = Sorted { [-1, -10, -100] }` <- backwards
+reverseSorted :: SortedList a -> SortedList a
+reverseSorted = Sorted . reverse . getSorted
+
+arbitraryBaseTestData :: NumSubperiods a => Gen a -> (Offset -> Offset -> a -> Gen (SortedList Offset, SortedList NewestOffset)) -> Gen (BaseTestData Identity a)
 arbitraryBaseTestData genNumSubperiods genOffsets = arbitraryNow $ \now -> do
   offsetFrom <- Offset . hours <$> chooseInt (1, 24) -- chooseSecond (hours 1, weeks 1)
   numSubperiods <- genNumSubperiods
@@ -71,15 +80,15 @@ arbitraryBaseTestData genNumSubperiods genOffsets = arbitraryNow $ \now -> do
 
   (offsets, newestOffsets) <- genOffsets offsetFrom offsetTo numSubperiods
 
-  let times = flip addLocalTime now . secondsToNominalDiffTime . intToSeconds . negate . unOffset <$> offsets
-      newestTimes = flip addLocalTime now . secondsToNominalDiffTime . intToSeconds . negate . unNewestOffset <$> newestOffsets
+  let times = reverseSorted $ flip addLocalTime now . secondsToNominalDiffTime . intToSeconds . negate . unOffset <$> offsets
+      newestTimes = reverseSorted $ flip addLocalTime now . secondsToNominalDiffTime . intToSeconds . negate . unNewestOffset <$> newestOffsets
 
   pure
     ( ( Offsets $ PrettyTimeInterval . secondsToNominalDiffTime . intToSeconds . unOffset <$> NE.fromList [offsetFrom, offsetTo]
       , Identity numSubperiods
       )
-    , (Times . Sorted $ sort times)
-    , (NewestTimes . Sorted $ sort newestTimes)
+    , Times times
+    , NewestTimes newestTimes
     )
 
 -- |Generates an arbitrary input for `cleanup` such that the times are outside
@@ -89,11 +98,11 @@ arbitraryInputOutsideOfRange = arbitraryBaseTestData
   (choose @Float (1.1, 4.9))
   $ \(Offset offsetFrom) (Offset offsetTo) _ -> do
     -- range: [now - offsetTo * 2; now - offsetTo) ∪ (now - offsetFrom; now]
-    offsets <- listOf1 $ Offset . ceiling @_ @Int <$> oneof
+    offsets <- listOf1 $ ceiling @_ @Int <$> oneof
       [ (* (fromIntegral offsetTo)) <$> choose @Float (1.001, 2.0)
       , (* (fromIntegral offsetFrom)) <$> choose @Float (0.0, 0.999)
       ]
-    pure (offsets, [])
+    pure (Sorted . fmap Offset . sort $ offsets, Sorted [])
 
 -- |Generates an arbitrary input for `cleanup` such that the number of times
 -- |matches the number of subperiods in the period.
@@ -101,8 +110,9 @@ arbitraryInputWithinRange :: Gen (BaseTestData Identity Int)
 arbitraryInputWithinRange = arbitraryBaseTestData
   (chooseInt (1, 10))
   $ \(Offset offsetFrom) (Offset offsetTo) numSubperiods -> do
-    offsets <- vectorOf numSubperiods (Offset <$> choose (offsetFrom + 1, offsetTo - 1))
-    pure (offsets, [])
+    let arbitraryOffset = choose (offsetFrom + 1, offsetTo - 1)
+    offsets <- vectorOf numSubperiods arbitraryOffset
+    pure (Sorted . fmap Offset . sort $ offsets, Sorted [])
 
 -- |Generates an arbitrary input for `cleanup` such that each subperiod has at
 -- |least two times; the newest times in each one are _also_ returned separately
@@ -114,9 +124,14 @@ arbitraryInputWithinRangeSubperiods = arbitraryBaseTestData
   choose_
   $ \offsetFrom _ numSubperiods -> do
       generatedOffsets <- traverse (arbitraryOffsets offsetFrom) . adjacentPairs $ zeroList numSubperiods
+      -- `newestOffsets` and `offsets` are sorted by definition of sorted `zeroList`
       let (newestOffsets, offsets) = sequence $ (\(newestTime, times) -> ([newestTime], times)) <$> generatedOffsets
 
-      pure (concat offsets, newestOffsets)
+      pure (concatSorted offsets, Sorted newestOffsets)
+
+-- |Concatenates a _sorted_ list of `SortedList`s into a `SortedList`.
+concatSorted :: [SortedList a] -> SortedList a
+concatSorted = Sorted . concat . fmap getSorted
 
 -- |Generates an arbitrary input for `cleanup` with one period starting at `now`
 -- |and multiple times there.
@@ -131,17 +146,17 @@ arbitraryInputWithinRangeFromNow = arbitraryNow $ \now -> do
       numOffsets <- chooseInt (1, 10)
       offsets <- vectorOf numOffsets $ choose (newestOffset + 1, offsetTo - 1)
 
-      pure (offsets ++ [newestOffset], [newestOffset])
+      pure (Sorted $ newestOffset : sort offsets, Sorted [newestOffset])
 
-  let times = flip addLocalTime now . secondsToNominalDiffTime . intToSeconds . negate <$> offsets
-      newestTimes = flip addLocalTime now . secondsToNominalDiffTime . intToSeconds . negate <$> newestOffsets
+  let times = reverseSorted $ flip addLocalTime now . secondsToNominalDiffTime . intToSeconds . negate <$> offsets
+      newestTimes = reverseSorted $ flip addLocalTime now . secondsToNominalDiffTime . intToSeconds . negate <$> newestOffsets
 
   pure
     ( ( Offsets $ PrettyTimeInterval . secondsToNominalDiffTime . intToSeconds <$> NE.fromList [offsetFrom, offsetTo]
       , Identity numSubperiods
       )
-    , (Times . Sorted $ sort times)
-    , (NewestTimes . Sorted $ sort newestTimes)
+    , Times times
+    , NewestTimes newestTimes
     )
 
 -- |Generates arbitrary time offsets (newest offsets are also included in all
@@ -151,21 +166,21 @@ arbitraryInputWithinRangeFromNow = arbitraryNow $ \now -> do
 -- Example:
 --  * `offsetFrom = hours 4`
 --  * `numSubperiod = (3, 3.5)`
---  * => returns offsets in `(hours (4 * (3 + 1)), hours (4 * (3.5 + 1))) =
+--  * => returns sorted offsets in `(hours (4 * (3 + 1)), hours (4 * (3.5 + 1))) =
 --       = (hours 16, hours 18)`
 --
 -- Note: the extra `+ 1` comes from the fact that the subperiod itself is shifted
 -- from "zero" (i.e., "now") by `offsetFrom`, and we need to generate the
 -- offsets relative to `offsetFrom`, not "zero".
-arbitraryOffsets :: NumSubperiods a => Offset -> (a, a) -> Gen (NewestOffset, [Offset])
+arbitraryOffsets :: NumSubperiods a => Offset -> (a, a) -> Gen (NewestOffset, SortedList Offset)
 arbitraryOffsets (Offset offsetFrom) (numSubperiodFrom, numSubperiodTo) = do
   let subperiodFrom = ceiling_ $ fromIntegral offsetFrom * (numSubperiodFrom + 1)
       subperiodTo = ceiling_ $ fromIntegral offsetFrom * (numSubperiodTo + 1)
   newestOffset <- choose (subperiodFrom + 1, subperiodTo - 1)
   numOffsets <- chooseInt (1, 2)
   arbitraryNewerOffsets <- vectorOf numOffsets $ choose (newestOffset + 1, subperiodTo - 1)
-  let offsets = newestOffset : arbitraryNewerOffsets
-  pure (NewestOffset newestOffset, Offset <$> offsets)
+  let offsets = newestOffset : sort arbitraryNewerOffsets
+  pure (NewestOffset newestOffset, Sorted $ Offset <$> offsets)
 
 -- |A control parameter for `arbitraryMultiPeriodBaseTestData` that defines
 -- |whether all periods will have times or some will be without times.
@@ -188,19 +203,20 @@ arbitraryMultiPeriodBaseTestData quantifier = arbitraryNow $ \now -> do
   offsetFrom <- Offset . hours <$> chooseInt (1, 10)
   infos <- unfoldrM nextPeriod (offsetFrom, numPeriods)
   let periods = (\(x, _, _) -> x) <$> infos
-      newestOffsets = concatMap (\(_, x, _) -> x) infos
-      offsets = concatMap (\(_, _, x) -> x) infos
+      newestOffsets = concatSorted $ map (\(_, x, _) -> x) infos
+      offsets = concatSorted $ map (\(_, _, x) -> x) infos
 
-  let times = flip addLocalTime now . secondsToNominalDiffTime . intToSeconds . negate . unOffset <$> offsets
-      newestTimes = flip addLocalTime now . secondsToNominalDiffTime . intToSeconds . negate . unNewestOffset <$> newestOffsets
+  let times = reverseSorted $ flip addLocalTime now . secondsToNominalDiffTime . intToSeconds . negate . unOffset <$> offsets
+      newestTimes = reverseSorted $ flip addLocalTime now . secondsToNominalDiffTime . intToSeconds . negate . unNewestOffset <$> newestOffsets
+
       periodOffsets = NE.fromList $ fst <$> periods
       initialOffsetFrom = PrettyTimeInterval . secondsToNominalDiffTime . intToSeconds . unOffset $ offsetFrom
       periodInfo = (Offsets . (initialOffsetFrom NE.<|) . join . fmap unOffsets $ periodOffsets, runIdentity . snd <$> periods)
 
-  pure (periodInfo, Times . Sorted $ sort times, NewestTimes . Sorted $ sort newestTimes)
+  pure (periodInfo, Times times, NewestTimes newestTimes)
 
   where
-    nextPeriod :: (Offset, Int) -> Gen (Maybe ((PeriodInfo Identity Float, [NewestOffset], [Offset]), (Offset, Int)))
+    nextPeriod :: (Offset, Int) -> Gen (Maybe ((PeriodInfo Identity Float, SortedList NewestOffset, SortedList Offset), (Offset, Int)))
     nextPeriod (offsetFrom, numPeriods) =
       if numPeriods == 0
       then pure Nothing
@@ -209,7 +225,7 @@ arbitraryMultiPeriodBaseTestData quantifier = arbitraryNow $ \now -> do
         let nextOffsetFrom = offsetTo
         pure . Just $ (info, (nextOffsetFrom, numPeriods - 1))
 
-    generatePeriod :: Offset -> Gen (Offset, (PeriodInfo Identity Float, [NewestOffset], [Offset]))
+    generatePeriod :: Offset -> Gen (Offset, (PeriodInfo Identity Float, SortedList NewestOffset, SortedList Offset))
     generatePeriod oFrom@(Offset offsetFrom) = do
       numSubperiods <- choose_
       let offsetTo = ceiling_ $ fromIntegral offsetFrom * (numSubperiods + 1)
@@ -227,8 +243,8 @@ arbitraryMultiPeriodBaseTestData quantifier = arbitraryNow $ \now -> do
         , ( ( Offsets $ PrettyTimeInterval . secondsToNominalDiffTime . intToSeconds <$> NE.fromList [offsetTo]
             , Identity numSubperiods
           )
-          , newestOffsets
-          , concat offsets
+          , Sorted newestOffsets
+          , concatSorted offsets
           )
         )
 
