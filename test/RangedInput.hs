@@ -116,7 +116,7 @@ arbitraryInputWithinRangeSubperiods = arbitraryBaseTestData
       generatedOffsets <- traverse (arbitraryOffsets offsetFrom) . adjacentPairs $ zeroList numSubperiods
       let (newestOffsets, offsets) = sequence $ (\(newestTime, times) -> ([newestTime], times)) <$> generatedOffsets
 
-      pure (concat offsets ++ (Offset . unNewestOffset <$> newestOffsets), newestOffsets)
+      pure (concat offsets, newestOffsets)
 
 -- |Generates an arbitrary input for `cleanup` with one period starting at `now`
 -- |and multiple times there.
@@ -164,8 +164,8 @@ arbitraryOffsets (Offset offsetFrom) (numSubperiodFrom, numSubperiodTo) = do
   newestOffset <- choose (subperiodFrom + 1, subperiodTo - 1)
   numOffsets <- chooseInt (1, 2)
   arbitraryNewerOffsets <- vectorOf numOffsets $ choose (newestOffset + 1, subperiodTo - 1)
-  let offsets = Offset <$> arbitraryNewerOffsets
-  pure (NewestOffset newestOffset, offsets)
+  let offsets = newestOffset : arbitraryNewerOffsets
+  pure (NewestOffset newestOffset, Offset <$> offsets)
 
 -- |A control parameter for `arbitraryMultiPeriodBaseTestData` that defines
 -- |whether all periods will have times or some will be without times.
@@ -228,7 +228,7 @@ arbitraryMultiPeriodBaseTestData quantifier = arbitraryNow $ \now -> do
             , Identity numSubperiods
           )
           , newestOffsets
-          , concat offsets ++ (Offset . unNewestOffset <$> newestOffsets)
+          , concat offsets
           )
         )
 
