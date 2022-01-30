@@ -163,7 +163,8 @@ arbitraryOffsets (Offset offsetFrom) (numSubperiodFrom, numSubperiodTo) = do
       subperiodTo = ceiling_ $ fromIntegral offsetFrom * (numSubperiodTo + 1)
   newestOffset <- choose (subperiodFrom + 1, subperiodTo - 1)
   numOffsets <- chooseInt (1, 2)
-  offsets <- fmap (fmap Offset) . vectorOf numOffsets $ choose (newestOffset + 1, subperiodTo - 1)
+  arbitraryNewerOffsets <- vectorOf numOffsets $ choose (newestOffset + 1, subperiodTo - 1)
+  let offsets = Offset <$> arbitraryNewerOffsets
   pure (NewestOffset newestOffset, offsets)
 
 -- |A control parameter for `arbitraryMultiPeriodBaseTestData` that defines
