@@ -14,4 +14,7 @@ type Offset = NominalDiffTime
 -- TODO use `Sorted LocalTime`?
 gfsRemove :: Now -> Offset -> [LocalTime] -> [LocalTime]
 gfsRemove _ _ [] = []
-gfsRemove _ _ times = times
+gfsRemove now offset times =
+  -- "remove" means to return times from the function
+  let removeBeforeTime = addLocalTime (negate offset) now
+  in filter (< removeBeforeTime) times

@@ -16,14 +16,21 @@ spec = do
         gfsRemove now offset [] == []
 
     describe "given fixed 1 hour offset" $ do
-      let offset = 60 * 60 :: NominalDiffTime
+      let offset' = 60 * 60 :: Integer
+          offset = fromInteger offset' :: NominalDiffTime
 
       it "returns all times older than 1 hour" $
         property $ \(ALocalTime now) -> do
           -- all times are older than 1 hour
           -- TODO extract the generator?
-          times <- fmap (flip addLocalTime now . negate . (+ offset) . fromInteger) <$> listOf (chooseInteger (0, 9000))
-          pure . counterexample ("times: " ++ show times) $ gfsRemove now offset times == times
+          times <- fmap (flip addLocalTime now . negate . (+ offset) . fromInteger) <$> listOf (chooseInteger (1, 9000))
+          let cleaned = gfsRemove now offset times
+          pure . counterexample ("times: " <> show times <> "\ncleaned: " <> show cleaned) $ cleaned == times
+
+      it "returns nothing for one time newer than 1 hour" $
+        property $ \(ALocalTime now) -> do
+          time <- flip addLocalTime now . negate . fromInteger <$> chooseInteger (1, offset' - 1)
+          pure . counterexample ("time: " <> show time) $ gfsRemove now offset [time] == []
 
 -- | Newtype wrapper for `LocalTime` in order to implement the `Arbitrary` instance.
 newtype ALocalTime = ALocalTime LocalTime
