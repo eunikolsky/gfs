@@ -32,6 +32,11 @@ spec = do
           time <- flip addLocalTime now . negate . fromInteger <$> chooseInteger (1, offset' - 1)
           pure . counterexample ("time: " <> show time) $ gfsRemove now offset [time] == []
 
+      it "returns nothing for (keeps) time exactly 1 hour older" $
+        property $ \(ALocalTime now) -> do
+          let time = addLocalTime (negate offset) now
+          gfsRemove now offset [time] == []
+
 -- | Newtype wrapper for `LocalTime` in order to implement the `Arbitrary` instance.
 newtype ALocalTime = ALocalTime LocalTime
   deriving Show
@@ -43,6 +48,7 @@ instance Arbitrary ALocalTime where
     -- TODO use random second
     time <- TimeOfDay <$> chooseInt (0, 23) <*> chooseInt (0, 59) <*> pure 0
     pure . ALocalTime $ LocalTime day time
+  -- TODO try implementing `shrink`
 
 newtype AOffset = AOffset NominalDiffTime
   deriving Show
