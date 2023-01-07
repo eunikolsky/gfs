@@ -24,6 +24,8 @@ source-repository head
   location: https://github.com/githubuser/tscleaner
 
 library
+  exposed-modules:
+      GFS
   other-modules:
       Paths_tscleaner
   hs-source-dirs:
@@ -51,6 +53,7 @@ test-suite tscleaner-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
+      GFSSpec
       Paths_tscleaner
   hs-source-dirs:
       test
