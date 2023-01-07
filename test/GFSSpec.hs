@@ -37,6 +37,16 @@ spec = do
           let time = addLocalTime (negate offset) now
           gfsRemove now offset [time] == []
 
+      it "returns all times except oldest" $
+        property $ \(ALocalTime now) -> do
+          oldestTimeOffset <- chooseInteger (offset' `div` 2, offset' - 1)
+          let oldestTime = addLocalTime (negate . fromInteger $ oldestTimeOffset) now
+          -- TODO is it possible to encapsulate and hide the offset subtractions so that they are always positive in the properties?
+          times <- fmap (flip addLocalTime now . negate . fromInteger) <$> listOf (chooseInteger (1, oldestTimeOffset))
+          let inputTimes = oldestTime : times
+              cleaned = gfsRemove now offset inputTimes
+          pure . counterexample ("input times: " <> show inputTimes <> "\ncleaned: " <> show cleaned) $ cleaned == times
+
 -- | Newtype wrapper for `LocalTime` in order to implement the `Arbitrary` instance.
 newtype ALocalTime = ALocalTime LocalTime
   deriving Show
