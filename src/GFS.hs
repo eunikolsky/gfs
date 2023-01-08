@@ -3,7 +3,7 @@ module GFS
   , mkTimeList
   ) where
 
-import Data.List (sort, uncons)
+import Data.List (sort)
 import Data.Time.Clock
 import Data.Time.LocalTime
 
@@ -18,10 +18,7 @@ gfsRemove now offset (TimeList times) =
   -- "to remove" means "to return times from this function"
   let removeBeforeTime = addLocalTime (negate offset) now
       (tooOld, newerThanOffset) = span (< removeBeforeTime) times
-      -- TODO if the input is always sorted, only one pass through `times` is always enough
-      unnecessaryNewerThanOffset = case uncons newerThanOffset of
-        Just (_oldestInNewer, xs) -> xs
-        Nothing -> []
+      unnecessaryNewerThanOffset = drop 1 newerThanOffset
   -- TODO should we require uniqueness of time values?
   -- TODO concatenating the filtered sorted times in correct order always produces a sorted
   -- list — is it possible to explain this to the type system?
