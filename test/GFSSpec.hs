@@ -13,9 +13,10 @@ spec :: Spec
 spec = do
   describe "gfsRemove" $ do
     it "returns nothing for empty times" $
-      property $ \(ALocalTime now) (AOffset offset) ->
+      property $ \(ALocalTime now) ->
         let noTimes = mkTimeList []
-        in gfsRemove now offset noTimes == noTimes
+            checkpoints = mkSingletonCheckpoint now
+        in gfsRemove checkpoints noTimes == noTimes
 
     describe "given fixed 1 hour offset" $ do
       let offset' = 60 * 60 :: Integer
@@ -26,18 +27,21 @@ spec = do
           -- all times are older than 1 hour
           -- TODO extract the generator?
           times <- mkTimeList . fmap (flip addLocalTime now . negate . (+ offset) . fromInteger) <$> listOf (chooseInteger (1, 9000))
-          let cleaned = gfsRemove now offset times
+          let checkpoints = mkCheckpoints (subLocalTime now offset) [now]
+              cleaned = gfsRemove checkpoints times
           pure . counterexample ("times: " <> show times <> "\ncleaned: " <> show cleaned) $ cleaned == times
 
       it "returns nothing for one time newer than 1 hour" $
         property $ \(ALocalTime now) -> do
           oneTime <- mkTimeList . singleton . flip addLocalTime now . negate . fromInteger <$> chooseInteger (1, offset' - 1)
-          pure . counterexample ("oneTime: " <> show oneTime) $ gfsRemove now offset oneTime == mkTimeList []
+          let checkpoints = mkCheckpoints (subLocalTime now offset) [now]
+          pure . counterexample ("oneTime: " <> show oneTime) $ gfsRemove checkpoints oneTime == mkTimeList []
 
       it "returns nothing for (keeps) time exactly 1 hour older" $
         property $ \(ALocalTime now) ->
           let oneTime = mkTimeList . singleton $ addLocalTime (negate offset) now
-          in gfsRemove now offset oneTime == mkTimeList []
+              checkpoints = mkCheckpoints (subLocalTime now offset) [now]
+          in gfsRemove checkpoints oneTime == mkTimeList []
 
       it "returns all times except oldest" $
         property $ \(ALocalTime now) -> do
@@ -46,8 +50,12 @@ spec = do
           -- TODO is it possible to encapsulate and hide the offset subtractions so that they are always positive in the properties?
           times <- fmap (flip addLocalTime now . negate . fromInteger) <$> listOf (chooseInteger (1, oldestTimeOffset))
           let inputTimes = mkTimeList $ oldestTime : times
-              cleaned = gfsRemove now offset inputTimes
+              checkpoints = mkCheckpoints (subLocalTime now offset) [now]
+              cleaned = gfsRemove checkpoints inputTimes
           pure . counterexample ("input times: " <> show inputTimes <> "\ncleaned: " <> show cleaned) $ cleaned == mkTimeList times
+
+subLocalTime :: LocalTime -> NominalDiffTime -> LocalTime
+subLocalTime t = flip addLocalTime t . negate
 
 -- | Newtype wrapper for `LocalTime` in order to implement the `Arbitrary` instance.
 newtype ALocalTime = ALocalTime LocalTime
@@ -61,9 +69,3 @@ instance Arbitrary ALocalTime where
     time <- TimeOfDay <$> chooseInt (0, 23) <*> chooseInt (0, 59) <*> pure 0
     pure . ALocalTime $ LocalTime day time
   -- TODO try implementing `shrink`
-
-newtype AOffset = AOffset NominalDiffTime
-  deriving Show
-
-instance Arbitrary AOffset where
-  arbitrary = AOffset . fromInteger <$> chooseInteger (0, 86400)
