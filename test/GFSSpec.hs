@@ -2,7 +2,9 @@ module GFSSpec where
 
 import GFS
 
+import Control.Monad
 import Data.List (singleton)
+import Data.List.NonEmpty (NonEmpty)
 import Data.Time.Calendar.OrdinalDate
 import Data.Time.Clock
 import Data.Time.LocalTime
@@ -55,13 +57,20 @@ spec = do
               cleaned = gfsRemove checkpoints inputTimes
           pure . counterexample ("input times: " <> show inputTimes <> "\ncleaned: " <> show cleaned) $ cleaned == mkTimeList times
 
-    describe "given multiple offsets" $
+    describe "given multiple offsets" $ do
       it "returns all times older than the oldest offset" $
         property $ \(ALocalTime now) -> do
           checkpoints <- chooseCheckpoints now
           let oldestCheckpoint = NE.head . unCheckpoints $ checkpoints
           times <- chooseTimesOlderThan oldestCheckpoint
           verifyRemoved checkpoints times times
+
+      it "returns nothing for single times in each checkpoint range" $
+        property $ \(ALocalTime now) -> do
+          checkpoints <- chooseCheckpoints now
+          let checkpointPairs = adjacentPairs . unCheckpoints $ checkpoints
+          times <- chooseSingleTimeInEachRange checkpointPairs
+          verifyRemoved checkpoints times (mkTimeList [])
 
 verifyRemoved :: Checkpoints -> TimeList -> TimeList -> Gen Property
 verifyRemoved checkpoints times expected =
@@ -85,8 +94,18 @@ chooseTimesOlderThan t = do
   offsets <- listOf $ fromInteger <$> chooseInteger (1, 9000)
   pure . mkTimeList $ subLocalTime t <$> offsets
 
+chooseSingleTimeInEachRange :: [(LocalTime, LocalTime)] -> Gen TimeList
+chooseSingleTimeInEachRange ranges = fmap mkTimeList $
+  forM ranges $ \(from, to) -> do
+    let diff = to `diffLocalTime` from
+    fromOffset <- fromInteger <$> chooseInteger (0, floor diff - 1)
+    pure $ addLocalTime fromOffset from
+
 subLocalTime :: LocalTime -> NominalDiffTime -> LocalTime
 subLocalTime t = flip addLocalTime t . negate
+
+adjacentPairs :: NonEmpty a -> [(a, a)]
+adjacentPairs xs = zip (NE.toList xs) (NE.tail xs)
 
 -- | Newtype wrapper for `LocalTime` in order to implement the `Arbitrary` instance.
 newtype ALocalTime = ALocalTime LocalTime

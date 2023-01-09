@@ -26,7 +26,7 @@ ghc-options:
   - -Wall
   - -Wcompat
   - -Wincomplete-record-updates
-  - -Wincomplete-uni-patterns
+  - -Werror=incomplete-uni-patterns
   - -Wredundant-constraints
   - -Wmissing-fields
   - -Wmissing-methods
