@@ -100,9 +100,8 @@ verifyRemoved checkpoints times expected =
 chooseCheckpoints :: LocalTime -> Gen Checkpoints
 chooseCheckpoints now = do
   let chooseOffset = fromInteger <$> chooseInteger (1, 9000)
-  offset <- chooseOffset
   offsets <- listOf chooseOffset
-  pure $ mkCheckpoints (now `subLocalTime` offset) (subLocalTime now <$> offsets)
+  pure $ mkCheckpoints now (subLocalTime now <$> offsets)
 
 chooseTimesOlderThan :: LocalTime -> Gen TimeList
 chooseTimesOlderThan t = do
