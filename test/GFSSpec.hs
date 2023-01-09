@@ -72,6 +72,12 @@ spec = do
           times <- chooseSingleTimeInEachRange checkpointPairs
           verifyRemoved checkpoints times (mkTimeList [])
 
+      it "returns nothing for (keeps) times exactly at the checkpoints" $
+        property $ \(ALocalTime now) -> do
+          checkpoints <- chooseCheckpoints now
+          let times = timeListFromCheckpoints checkpoints
+          verifyRemoved checkpoints times (mkTimeList [])
+
 verifyRemoved :: Checkpoints -> TimeList -> TimeList -> Gen Property
 verifyRemoved checkpoints times expected =
   let cleaned = gfsRemove checkpoints times
@@ -100,6 +106,9 @@ chooseSingleTimeInEachRange ranges = fmap mkTimeList $
     let diff = to `diffLocalTime` from
     fromOffset <- fromInteger <$> chooseInteger (0, floor diff - 1)
     pure $ addLocalTime fromOffset from
+
+timeListFromCheckpoints :: Checkpoints -> TimeList
+timeListFromCheckpoints = mkTimeList . NE.toList . unCheckpoints
 
 subLocalTime :: LocalTime -> NominalDiffTime -> LocalTime
 subLocalTime t = flip addLocalTime t . negate
