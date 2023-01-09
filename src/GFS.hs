@@ -9,7 +9,7 @@ module GFS
   , unCheckpoints
   ) where
 
-import Data.List (sort, uncons)
+import Data.List (sort)
 import Data.List.NonEmpty (NonEmpty(..))
 import Data.Time.LocalTime
 import qualified Data.List.NonEmpty as NE
@@ -17,20 +17,24 @@ import qualified Data.List.NonEmpty as NE
 gfsRemove :: Checkpoints -> TimeList -> TimeList
 gfsRemove (Checkpoints checkpoints) (TimeList times) =
   -- "to remove" means "to return times from this function"
-  mkTimeList $ case uncons (splitAtCheckpoints checkpoints times) of
-    Just (tooOld, newerThanOffset) ->
-      let keepOldest = drop 1
+  let tooOld :| newerThanOffset = splitAtCheckpoints checkpoints times
+      keepOldest = drop 1
       -- TODO should we require uniqueness of time values?
       -- TODO concatenating the filtered sorted times in correct order always produces a sorted
       -- list — is it possible to explain this to the type system?
-      in tooOld ++ concatMap keepOldest newerThanOffset
-    Nothing -> []
+  in mkTimeList $ tooOld ++ concatMap keepOldest newerThanOffset
 
-splitAtCheckpoints :: Ord a => NonEmpty a -> [a] -> [[a]]
-splitAtCheckpoints checkpoints xs =
-  let (checkpoint, maybeOtherCheckpoints) = NE.uncons checkpoints
-      (beforeCheckpoint, rest) = span (< checkpoint) xs
-  in beforeCheckpoint : maybe [rest] (`splitAtCheckpoints` rest) maybeOtherCheckpoints
+splitAtCheckpoints :: Ord a => NonEmpty a -> [a] -> NonEmpty [a]
+splitAtCheckpoints (checkpoint :| otherCheckpoints) xs =
+  let (beforeCheckpoint, rest) = span (< checkpoint) xs
+  in beforeCheckpoint :| splitAtCheckpoints' otherCheckpoints rest
+
+splitAtCheckpoints' :: Ord a => [a] -> [a] -> [[a]]
+splitAtCheckpoints' [] xs = [xs]
+splitAtCheckpoints' (checkpoint : otherCheckpoints) xs =
+  -- TODO remove duplication
+  let (beforeCheckpoint, rest) = span (< checkpoint) xs
+  in beforeCheckpoint : splitAtCheckpoints' otherCheckpoints rest
 
 -- TODO extract to a new module
 -- | Non-empty, sorted (oldest to newest) list of unique `LocalTime` values, used to
