@@ -8,6 +8,7 @@ import Data.Time.Clock
 import Data.Time.LocalTime
 import Test.Hspec
 import Test.QuickCheck
+import qualified Data.List.NonEmpty as NE
 
 spec :: Spec
 spec = do
@@ -53,6 +54,36 @@ spec = do
               checkpoints = mkCheckpoints (subLocalTime now offset) [now]
               cleaned = gfsRemove checkpoints inputTimes
           pure . counterexample ("input times: " <> show inputTimes <> "\ncleaned: " <> show cleaned) $ cleaned == mkTimeList times
+
+    describe "given multiple offsets" $
+      it "returns all times older than the oldest offset" $
+        property $ \(ALocalTime now) -> do
+          checkpoints <- chooseCheckpoints now
+          let oldestCheckpoint = NE.head . unCheckpoints $ checkpoints
+          times <- chooseTimesOlderThan oldestCheckpoint
+          verifyRemoved checkpoints times times
+
+verifyRemoved :: Checkpoints -> TimeList -> TimeList -> Gen Property
+verifyRemoved checkpoints times expected =
+  let cleaned = gfsRemove checkpoints times
+  in pure . counterexample (mconcat
+      [ "checkpoints: ", show checkpoints
+      , "\ntimes: ", show times
+      , "\ncleaned: ", show cleaned
+      ]
+    ) $ cleaned == expected
+
+chooseCheckpoints :: LocalTime -> Gen Checkpoints
+chooseCheckpoints now = do
+  let chooseOffset = fromInteger <$> chooseInteger (1, 9000)
+  offset <- chooseOffset
+  offsets <- listOf chooseOffset
+  pure $ mkCheckpoints (now `subLocalTime` offset) (subLocalTime now <$> offsets)
+
+chooseTimesOlderThan :: LocalTime -> Gen TimeList
+chooseTimesOlderThan t = do
+  offsets <- listOf $ fromInteger <$> chooseInteger (1, 9000)
+  pure . mkTimeList $ subLocalTime t <$> offsets
 
 subLocalTime :: LocalTime -> NominalDiffTime -> LocalTime
 subLocalTime t = flip addLocalTime t . negate

@@ -1,9 +1,12 @@
 module GFS
   ( gfsRemove
 
+  , Checkpoints
+  , TimeList
   , mkCheckpoints
   , mkSingletonCheckpoint
   , mkTimeList
+  , unCheckpoints
   ) where
 
 import Data.List (sort)
