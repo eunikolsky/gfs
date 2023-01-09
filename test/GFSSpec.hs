@@ -3,7 +3,8 @@ module GFSSpec where
 import GFS
 
 import Control.Monad
-import Data.List (singleton)
+import Data.Bifunctor
+import Data.List (foldl', singleton, sort)
 import Data.List.NonEmpty (NonEmpty)
 import Data.Time.Calendar.OrdinalDate
 import Data.Time.Clock
@@ -78,13 +79,21 @@ spec = do
           let times = timeListFromCheckpoints checkpoints
           verifyRemoved checkpoints times (mkTimeList [])
 
+      it "returns all times except the oldest in each checkpoint range" $
+        property $ \(ALocalTime now) -> do
+          checkpoints <- chooseCheckpoints now
+          let checkpointPairs = adjacentPairs . unCheckpoints $ checkpoints
+          (times, timesWithoutOldest) <- chooseTimesInEachRange checkpointPairs
+          verifyRemoved checkpoints times timesWithoutOldest
+
 verifyRemoved :: Checkpoints -> TimeList -> TimeList -> Gen Property
 verifyRemoved checkpoints times expected =
   let cleaned = gfsRemove checkpoints times
   in pure . counterexample (mconcat
       [ "checkpoints: ", show checkpoints
       , "\ntimes: ", show times
-      , "\ncleaned: ", show cleaned
+      , "\nexpected: ", show expected
+      , "\nactual: ", show cleaned
       ]
     ) $ cleaned == expected
 
@@ -106,6 +115,19 @@ chooseSingleTimeInEachRange ranges = fmap mkTimeList $
     let diff = to `diffLocalTime` from
     fromOffset <- fromInteger <$> chooseInteger (0, floor diff - 1)
     pure $ addLocalTime fromOffset from
+
+chooseTimesInEachRange :: [(LocalTime, LocalTime)] -> Gen (TimeList, TimeList)
+chooseTimesInEachRange ranges = fmap combineTimes .
+  forM ranges $ \(from, to) -> do
+    let diff = to `diffLocalTime` from
+    fromOffsets <- fmap fromInteger <$> listOf1 (chooseInteger (0, floor diff - 1))
+    let times = sort $ (`addLocalTime` from) <$> fromOffsets
+    pure (times, dropOldest times)
+
+  where
+    dropOldest = drop 1
+    combineTimes :: [([LocalTime], [LocalTime])] -> (TimeList, TimeList)
+    combineTimes = bimap mkTimeList mkTimeList . foldl' (\(acctimes, acctimes') (times, times') -> (acctimes ++ times, acctimes' ++ times')) ([], [])
 
 timeListFromCheckpoints :: Checkpoints -> TimeList
 timeListFromCheckpoints = mkTimeList . NE.toList . unCheckpoints
