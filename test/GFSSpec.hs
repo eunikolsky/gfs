@@ -22,6 +22,12 @@ spec = do
             checkpoints = mkSingletonCheckpoint now
         in gfsRemove checkpoints noTimes == noTimes
 
+    it "never removes times after now (last checkpoint)" $
+      property $ \(ALocalTime now) -> do
+        checkpoints <- chooseCheckpoints now
+        times <- chooseTimesAfterNow now
+        verifyRemoved checkpoints times (mkTimeList [])
+
     describe "given fixed 1 hour offset" $ do
       let offset' = 60 * 60 :: Integer
           offset = fromInteger offset' :: NominalDiffTime
@@ -102,6 +108,11 @@ chooseCheckpoints now = do
   let chooseOffset = fromInteger <$> chooseInteger (1, 9000)
   offsets <- listOf chooseOffset
   pure $ mkCheckpoints now (subLocalTime now <$> offsets)
+
+chooseTimesAfterNow :: LocalTime -> Gen TimeList
+chooseTimesAfterNow now = do
+  offsets <- listOf $ fromInteger <$> chooseInteger (1, 9000)
+  pure . mkTimeList $ (`addLocalTime` now) <$> offsets
 
 chooseTimesOlderThan :: LocalTime -> Gen TimeList
 chooseTimesOlderThan t = do

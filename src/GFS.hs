@@ -29,7 +29,11 @@ splitAtCheckpoints checkpoints xs =
   let (checkpoint, maybeOtherCheckpoints) = NE.uncons checkpoints
       (beforeCheckpoint, rest) = span (< checkpoint) xs
   in beforeCheckpoint <|
-    maybe (NE.singleton rest) (`splitAtCheckpoints` rest) maybeOtherCheckpoints
+    {- note: the last block of times (times after the last checkpoint, "now") is
+     - ignored (`rest` is unused) and never returned to `gfsRemove`, thus the times
+     - are never cleaned, which is the expected behavior
+     -}
+    maybe (NE.singleton []) (`splitAtCheckpoints` rest) maybeOtherCheckpoints
 
 -- TODO extract to a new module
 -- | Non-empty, sorted (oldest to newest) list of unique `LocalTime` values, used to
