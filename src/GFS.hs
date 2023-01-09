@@ -10,7 +10,7 @@ module GFS
   ) where
 
 import Data.List (sort)
-import Data.List.NonEmpty (NonEmpty(..))
+import Data.List.NonEmpty ((<|), NonEmpty(..))
 import Data.Time.LocalTime
 import qualified Data.List.NonEmpty as NE
 
@@ -25,16 +25,11 @@ gfsRemove (Checkpoints checkpoints) (TimeList times) =
   in mkTimeList $ tooOld ++ concatMap keepOldest newerThanOffset
 
 splitAtCheckpoints :: Ord a => NonEmpty a -> [a] -> NonEmpty [a]
-splitAtCheckpoints (checkpoint :| otherCheckpoints) xs =
-  let (beforeCheckpoint, rest) = span (< checkpoint) xs
-  in beforeCheckpoint :| splitAtCheckpoints' otherCheckpoints rest
-
-splitAtCheckpoints' :: Ord a => [a] -> [a] -> [[a]]
-splitAtCheckpoints' [] xs = [xs]
-splitAtCheckpoints' (checkpoint : otherCheckpoints) xs =
-  -- TODO remove duplication
-  let (beforeCheckpoint, rest) = span (< checkpoint) xs
-  in beforeCheckpoint : splitAtCheckpoints' otherCheckpoints rest
+splitAtCheckpoints checkpoints xs =
+  let (checkpoint, maybeOtherCheckpoints) = NE.uncons checkpoints
+      (beforeCheckpoint, rest) = span (< checkpoint) xs
+  in beforeCheckpoint <|
+    maybe (NE.singleton rest) (`splitAtCheckpoints` rest) maybeOtherCheckpoints
 
 -- TODO extract to a new module
 -- | Non-empty, sorted (oldest to newest) list of unique `LocalTime` values, used to
