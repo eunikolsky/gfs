@@ -17,12 +17,12 @@ import qualified Data.List.NonEmpty as NE
 gfsRemove :: Checkpoints -> TimeList -> TimeList
 gfsRemove (Checkpoints checkpoints) (TimeList times) =
   -- "to remove" means "to return times from this function"
-  let tooOld :| newerThanOffset = times `splitAtCheckpoints` checkpoints
+  let tooOld :| timesBetweenCheckpoints = times `splitAtCheckpoints` checkpoints
       keepOldest = drop 1
       -- TODO should we require uniqueness of time values?
       -- TODO concatenating the filtered sorted times in correct order always produces a sorted
       -- list — is it possible to explain this to the type system?
-  in mkTimeList $ tooOld ++ concatMap keepOldest newerThanOffset
+  in mkTimeList $ tooOld ++ concatMap keepOldest timesBetweenCheckpoints
 
 splitAtCheckpoints :: Ord a => [a] -> NonEmpty a -> NonEmpty [a]
 splitAtCheckpoints xs checkpoints =
