@@ -3,6 +3,7 @@ module GFS
 
   , Checkpoints
   , TimeList
+  , keepNewestTime
   , mkCheckpoints
   , mkSingletonCheckpoint
   , mkTimeList
@@ -55,3 +56,6 @@ newtype TimeList = TimeList { unTimeList :: [LocalTime] }
 -- | Smart constructor for `TimeList` — sorts the input list if necessary.
 mkTimeList :: [LocalTime] -> TimeList
 mkTimeList = TimeList . sort
+
+keepNewestTime :: TimeList -> TimeList
+keepNewestTime = const $ TimeList []

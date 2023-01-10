@@ -92,6 +92,11 @@ spec = do
           (times, timesWithoutOldest) <- chooseTimesInEachRange checkpointPairs
           verifyRemoved checkpoints times timesWithoutOldest
 
+  describe "keepNewestTime" $ do
+    it "returns nothing for empty times" $
+      let noTimes = mkTimeList []
+      in keepNewestTime noTimes == noTimes
+
 verifyRemoved :: Checkpoints -> TimeList -> TimeList -> Gen Property
 verifyRemoved checkpoints times expected =
   let cleaned = gfsRemove checkpoints times
