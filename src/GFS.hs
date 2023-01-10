@@ -58,4 +58,6 @@ mkTimeList :: [LocalTime] -> TimeList
 mkTimeList = TimeList . sort
 
 keepNewestTime :: TimeList -> TimeList
-keepNewestTime = const $ TimeList []
+keepNewestTime times = case times of
+  TimeList [] -> times
+  xs -> TimeList . init . unTimeList $ xs

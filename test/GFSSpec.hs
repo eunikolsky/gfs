@@ -97,6 +97,11 @@ spec = do
       let noTimes = mkTimeList []
       in keepNewestTime noTimes == noTimes
 
+    it "removes the newest time" $
+      property . forAll chooseTimeList $ \(times, withoutNewest) ->
+        let actual = keepNewestTime times
+        in counterexample ("actual: " <> show actual) $ actual == withoutNewest
+
 verifyRemoved :: Checkpoints -> TimeList -> TimeList -> Gen Property
 verifyRemoved checkpoints times expected =
   let cleaned = gfsRemove checkpoints times
@@ -144,6 +149,12 @@ chooseTimesInEachRange ranges = fmap combineTimes .
     combineTimes :: [([LocalTime], [LocalTime])] -> (TimeList, TimeList)
     combineTimes = bimap mkTimeList mkTimeList . foldl' (\(acctimes, acctimes') (times, times') -> (acctimes ++ times, acctimes' ++ times')) ([], [])
 
+chooseTimeList :: Gen (TimeList, TimeList)
+chooseTimeList = do
+  times <- fmap sort . listOf1 $ unALocalTime <$> arbitrary
+  let withoutNewest = reverse . tail . reverse $ times
+  pure (mkTimeList times, mkTimeList withoutNewest)
+
 timeListFromCheckpoints :: Checkpoints -> TimeList
 timeListFromCheckpoints = mkTimeList . NE.toList . unCheckpoints
 
@@ -154,7 +165,7 @@ adjacentPairs :: NonEmpty a -> [(a, a)]
 adjacentPairs xs = zip (NE.toList xs) (NE.tail xs)
 
 -- | Newtype wrapper for `LocalTime` in order to implement the `Arbitrary` instance.
-newtype ALocalTime = ALocalTime LocalTime
+newtype ALocalTime = ALocalTime { unALocalTime :: LocalTime }
   deriving Show
 
 instance Arbitrary ALocalTime where
