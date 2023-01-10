@@ -55,6 +55,8 @@ test-suite tscleaner-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
+      ALocalTime
+      CheckpointsSpec
       GFSSpec
       TimeListSpec
       Paths_tscleaner

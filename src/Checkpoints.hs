@@ -2,6 +2,7 @@ module Checkpoints
   ( Checkpoints
   , mkCheckpoints
   , mkSingletonCheckpoint
+  , offsetsToCheckpoints
   , unCheckpoints
   ) where
 
@@ -19,3 +20,6 @@ mkSingletonCheckpoint = Checkpoints . NE.singleton
 
 mkCheckpoints :: LocalTime -> [LocalTime] -> Checkpoints
 mkCheckpoints one = Checkpoints . NE.nub . NE.sort . (one :|)
+
+offsetsToCheckpoints :: LocalTime -> Checkpoints
+offsetsToCheckpoints = mkSingletonCheckpoint
