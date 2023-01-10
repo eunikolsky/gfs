@@ -4,11 +4,12 @@ import Checkpoints
 import GFS
 import TimeList
 
+import ALocalTime
+
 import Control.Monad
 import Data.Bifunctor
 import Data.List (foldl', singleton, sort)
 import Data.List.NonEmpty (NonEmpty)
-import Data.Time.Calendar.OrdinalDate
 import Data.Time.Clock
 import Data.Time.LocalTime
 import Test.Hspec
@@ -94,16 +95,6 @@ spec = do
           (times, timesWithoutOldest) <- chooseTimesInEachRange checkpointPairs
           verifyRemoved checkpoints times timesWithoutOldest
 
-  describe "keepNewestTime" $ do
-    it "returns nothing for empty times" $
-      let noTimes = mkTimeList []
-      in keepNewestTime noTimes == noTimes
-
-    it "removes the newest time" $
-      property . forAll chooseTimeList $ \(times, withoutNewest) ->
-        let actual = keepNewestTime times
-        in counterexample ("actual: " <> show actual) $ actual == withoutNewest
-
 verifyRemoved :: Checkpoints -> TimeList -> TimeList -> Gen Property
 verifyRemoved checkpoints times expected =
   let cleaned = gfsRemove checkpoints times
@@ -151,12 +142,6 @@ chooseTimesInEachRange ranges = fmap combineTimes .
     combineTimes :: [([LocalTime], [LocalTime])] -> (TimeList, TimeList)
     combineTimes = bimap mkTimeList mkTimeList . foldl' (\(acctimes, acctimes') (times, times') -> (acctimes ++ times, acctimes' ++ times')) ([], [])
 
-chooseTimeList :: Gen (TimeList, TimeList)
-chooseTimeList = do
-  times <- fmap sort . listOf1 $ unALocalTime <$> arbitrary
-  let withoutNewest = reverse . tail . reverse $ times
-  pure (mkTimeList times, mkTimeList withoutNewest)
-
 timeListFromCheckpoints :: Checkpoints -> TimeList
 timeListFromCheckpoints = mkTimeList . NE.toList . unCheckpoints
 
@@ -165,16 +150,3 @@ subLocalTime t = flip addLocalTime t . negate
 
 adjacentPairs :: NonEmpty a -> [(a, a)]
 adjacentPairs xs = zip (NE.toList xs) (NE.tail xs)
-
--- | Newtype wrapper for `LocalTime` in order to implement the `Arbitrary` instance.
-newtype ALocalTime = ALocalTime { unALocalTime :: LocalTime }
-  deriving Show
-
-instance Arbitrary ALocalTime where
-  arbitrary = do
-    -- TODO use random year
-    day <- fromOrdinalDate <$> pure 2023 <*> chooseInt (1, 365)
-    -- TODO use random second
-    time <- TimeOfDay <$> chooseInt (0, 23) <*> chooseInt (0, 59) <*> pure 0
-    pure . ALocalTime $ LocalTime day time
-  -- TODO try implementing `shrink`
