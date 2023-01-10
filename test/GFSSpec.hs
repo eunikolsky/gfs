@@ -1,6 +1,8 @@
 module GFSSpec where
 
+import Checkpoints
 import GFS
+import TimeList
 
 import Control.Monad
 import Data.Bifunctor

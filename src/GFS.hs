@@ -1,24 +1,17 @@
 module GFS
   ( gfsRemove
-
-  , Checkpoints
-  , TimeList
-  , keepNewestTime
-  , mkCheckpoints
-  , mkSingletonCheckpoint
-  , mkTimeList
-  , unCheckpoints
   ) where
 
-import Data.List (sort)
+import Checkpoints
+import TimeList
+
 import Data.List.NonEmpty ((<|), NonEmpty(..))
-import Data.Time.LocalTime
 import qualified Data.List.NonEmpty as NE
 
 gfsRemove :: Checkpoints -> TimeList -> TimeList
-gfsRemove (Checkpoints checkpoints) (TimeList times) =
+gfsRemove checkpoints times =
   -- "to remove" means "to return times from this function"
-  let tooOld :| timesBetweenCheckpoints = times `splitAtCheckpoints` checkpoints
+  let tooOld :| timesBetweenCheckpoints = (unTimeList times) `splitAtCheckpoints` (unCheckpoints checkpoints)
       keepOldest = drop 1
       -- TODO should we require uniqueness of time values?
       -- TODO concatenating the filtered sorted times in correct order always produces a sorted
@@ -35,29 +28,3 @@ splitAtCheckpoints xs checkpoints =
      - are never cleaned, which is the expected behavior
      -}
     maybe (NE.singleton []) (splitAtCheckpoints rest) maybeOtherCheckpoints
-
--- TODO extract to a new module
--- | Non-empty, sorted (oldest to newest) list of unique `LocalTime` values, used to
--- specify boundary points in time where the next available time should be kept.
-newtype Checkpoints = Checkpoints { unCheckpoints :: NonEmpty LocalTime }
-  deriving Show
-
-mkSingletonCheckpoint :: LocalTime -> Checkpoints
-mkSingletonCheckpoint = Checkpoints . NE.singleton
-
-mkCheckpoints :: LocalTime -> [LocalTime] -> Checkpoints
-mkCheckpoints one = Checkpoints . NE.nub . NE.sort . (one :|)
-
--- TODO extract to a new module
--- | Sorted (oldest to newest) list of `LocalTime` values.
-newtype TimeList = TimeList { unTimeList :: [LocalTime] }
-  deriving (Eq, Show)
-
--- | Smart constructor for `TimeList` — sorts the input list if necessary.
-mkTimeList :: [LocalTime] -> TimeList
-mkTimeList = TimeList . sort
-
-keepNewestTime :: TimeList -> TimeList
-keepNewestTime times = case times of
-  TimeList [] -> times
-  xs -> TimeList . init . unTimeList $ xs

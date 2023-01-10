@@ -25,7 +25,9 @@ source-repository head
 
 library
   exposed-modules:
+      Checkpoints
       GFS
+      TimeList
   other-modules:
       Paths_tscleaner
   hs-source-dirs:
