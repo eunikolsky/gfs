@@ -27,6 +27,7 @@ library
   exposed-modules:
       Checkpoints
       GFS
+      GFSRange
       TimeList
   other-modules:
       Paths_tscleaner
@@ -57,6 +58,7 @@ test-suite tscleaner-test
   other-modules:
       ALocalTime
       CheckpointsSpec
+      GFSRangeSpec
       GFSSpec
       TimeListSpec
       Paths_tscleaner
