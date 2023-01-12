@@ -3,6 +3,8 @@ module GFSRange
   , applyRange
   ) where
 
+import Checkpoints
+
 import Data.Time.Calendar
 import Data.Time.LocalTime
 
@@ -20,8 +22,8 @@ data GFSRange = GFSRange
 type StartTime = LocalTime
 type Now = LocalTime
 
-applyRange :: GFSRange -> Now -> StartTime -> [LocalTime]
-applyRange range now _ = [endTime range now]
+applyRange :: GFSRange -> Now -> StartTime -> Checkpoints
+applyRange range now _ = mkCheckpoints (endTime range now) []
 
 endTime :: GFSRange -> Now -> LocalTime
 endTime (GFSRange _ limit) = subtractMonths . subtractTime

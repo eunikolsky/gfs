@@ -6,6 +6,8 @@ module Checkpoints
   , unCheckpoints
   ) where
 
+-- TODO hide `unCheckpoints` and provide higher-level functions instead
+
 import Data.Time.Clock
 import Data.Time.LocalTime
 import Data.List.NonEmpty (NonEmpty(..))
