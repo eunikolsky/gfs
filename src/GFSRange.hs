@@ -3,6 +3,7 @@ module GFSRange
   , applyRange
   ) where
 
+import Data.Time.Calendar
 import Data.Time.LocalTime
 
 -- | A single range for the GFS algorithm; it's used to calculate checkpoints relative
@@ -16,5 +17,20 @@ data GFSRange = GFSRange
   }
   deriving Show
 
-applyRange :: GFSRange -> LocalTime -> [LocalTime]
-applyRange _ _ = []
+type StartTime = LocalTime
+type Now = LocalTime
+
+applyRange :: GFSRange -> Now -> StartTime -> [LocalTime]
+applyRange range now _ = [endTime range now]
+
+endTime :: GFSRange -> Now -> LocalTime
+endTime (GFSRange _ limit) = subtractMonths . subtractTime
+  where
+    subtractTime = addLocalTime (negate $ ctTime limit)
+    diffMonths = scaleCalendarDiffDays (-1) $ calendarMonths limit
+    subtractMonths time = time
+      { localDay = addGregorianDurationClip diffMonths (localDay time)
+      }
+
+calendarMonths :: CalendarDiffTime -> CalendarDiffDays
+calendarMonths (CalendarDiffTime months _) = CalendarDiffDays months 0
