@@ -88,6 +88,12 @@ spec = do
             actualTimes = unCheckpoints actual
         pure $ actualTimes == NE.sort actualTimes
 
+  describe "applyRanges" $ do
+    it "includes start time" $
+      property $ \(AGFSRanges ranges) -> do
+        (now, startTime) <- chooseNowAndStartTime
+        pure $ startTime `elem` unCheckpoints (applyRanges ranges now startTime)
+
 -- TODO this function repeats the production code; avoid this somehow?
 getEndTime :: GFSRange -> LocalTime -> LocalTime
 getEndTime (GFSRange _ limit) = subTimeInterval limit
@@ -114,7 +120,7 @@ chooseNowAndStartTime = do
   let startTime = addLocalTime (negate startTimeOffset) now
   pure (now, startTime)
 
-newtype AGFSRange = AGFSRange GFSRange
+newtype AGFSRange = AGFSRange { unAGFSRange :: GFSRange }
   deriving Show
 
 instance Arbitrary AGFSRange where
@@ -126,3 +132,13 @@ instance Arbitrary AGFSRange where
     scale <- chooseInt (2, 5)
     let limit = scaleTimeInterval scale step
     pure . AGFSRange $ GFSRange step limit
+
+newtype AGFSRanges = AGFSRanges GFSRanges
+  deriving Show
+
+instance Arbitrary AGFSRanges where
+  arbitrary = do
+    let arbitraryRange = unAGFSRange <$> arbitrary
+    one <- arbitraryRange
+    ranges <- listOf1 arbitraryRange
+    pure . AGFSRanges $ mkGFSRanges one ranges

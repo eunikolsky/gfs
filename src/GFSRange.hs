@@ -1,12 +1,17 @@
 module GFSRange
   ( GFSRange(..)
+  , GFSRanges
   , applyRange
+  , applyRanges
+  , mkGFSRanges
   ) where
 
 import Checkpoints
 import TimeInterval
 
+import Data.List.NonEmpty (NonEmpty(..))
 import Data.Time.LocalTime
+import qualified Data.List.NonEmpty as NE
 
 -- | A single range for the GFS algorithm; it's used to calculate checkpoints relative
 -- to "now" by going back in time by `rStep` from a start time as many times as
@@ -16,6 +21,13 @@ data GFSRange = GFSRange
   , rLimit :: !TimeInterval
   }
   deriving Show
+
+-- | A non-empty list of `GFSRange`s sorted by the limit.
+newtype GFSRanges = GFSRanges (NonEmpty GFSRange)
+  deriving Show
+
+mkGFSRanges :: GFSRange -> [GFSRange] -> GFSRanges
+mkGFSRanges range = GFSRanges . NE.sortWith rLimit . (range :|)
 
 type StartTime = LocalTime
 type Now = LocalTime
@@ -29,3 +41,6 @@ applyRange range@(GFSRange step _) now startTime = mkCheckpoints endTime times
 
 getEndTime :: GFSRange -> Now -> LocalTime
 getEndTime (GFSRange _ limit) = subTimeInterval limit
+
+applyRanges :: GFSRanges -> Now -> StartTime -> Checkpoints
+applyRanges _ _ startTime = mkCheckpoints startTime []
