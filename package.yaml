@@ -31,6 +31,9 @@ ghc-options:
   - -Wmissing-fields
   - -Wmissing-methods
 
+default-extensions:
+  - NumericUnderscores
+
 library:
   source-dirs: src
   dependencies:

@@ -23,16 +23,26 @@ type StartTime = LocalTime
 type Now = LocalTime
 
 applyRange :: GFSRange -> Now -> StartTime -> Checkpoints
-applyRange range now _ = mkCheckpoints (endTime range now) []
-
-endTime :: GFSRange -> Now -> LocalTime
-endTime (GFSRange _ limit) = subtractMonths . subtractTime
+applyRange range@(GFSRange step _) now startTime = mkCheckpoints endTime times
   where
-    subtractTime = addLocalTime (negate $ ctTime limit)
-    diffMonths = scaleCalendarDiffDays (-1) $ calendarMonths limit
+    endTime = getEndTime range now
+    times = safeTail . takeWhile (> endTime) $ iterate (subCalendarDiffTime step) startTime
+
+safeTail :: [a] -> [a]
+safeTail [] = []
+safeTail xs = tail xs
+
+subCalendarDiffTime :: CalendarDiffTime -> LocalTime -> LocalTime
+subCalendarDiffTime diff@(CalendarDiffTime _ diffTime) = subtractMonths . subtractTime
+  where
+    subtractTime = addLocalTime (negate diffTime)
+    diffMonths = scaleCalendarDiffDays (-1) $ calendarMonths diff
     subtractMonths time = time
       { localDay = addGregorianDurationClip diffMonths (localDay time)
       }
+
+getEndTime :: GFSRange -> Now -> LocalTime
+getEndTime (GFSRange _ limit) = subCalendarDiffTime limit
 
 calendarMonths :: CalendarDiffTime -> CalendarDiffDays
 calendarMonths (CalendarDiffTime months _) = CalendarDiffDays months 0

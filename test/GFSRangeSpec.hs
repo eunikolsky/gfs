@@ -5,6 +5,7 @@ import GFSRange
 
 import ALocalTime
 
+import Data.Maybe
 import Data.Time.Calendar
 import Data.Time.LocalTime
 import Test.Hspec
@@ -15,24 +16,64 @@ spec :: Spec
 spec = do
   describe "applyRange" $ do
     it "doesn't include start time" $
-      property $ \(AGFSRange range) (ALocalTime now) (ALocalTime time) ->
-        time `notElem` unCheckpoints (applyRange range now time)
+      property $ \(AGFSRange range) -> do
+        (now, time) <- chooseNowAndStartTime
+        pure . counterexample (mconcat
+          [ "now: ", show now
+          , "\nstart time: ", show time
+          ]) $ time `notElem` unCheckpoints (applyRange range now time)
 
-    it "includes end time from now at the end" $
-      property $ \(AGFSRange range) (ALocalTime now) (ALocalTime time) ->
+    it "includes end time from now" $
+      property $ \(AGFSRange range) -> do
+        (now, time) <- chooseNowAndStartTime
         let endTime = getEndTime range now
             actual = applyRange range now time
-        in counterexample (mconcat
+        pure . counterexample (mconcat
           [ "endTime: " <> show endTime
           , "\nactual: " <> show actual
-          ]) $ NE.last (unCheckpoints actual) == endTime
+          ]) $ endTime `elem` NE.toList (unCheckpoints actual)
+
+    it "returns the correct number of times" $
+      property $ \(AGFSRange range) -> do
+        (now, startTime) <- chooseNowAndStartTime
+        let endTime = getEndTime range now
+            actual = applyRange range now startTime
+            (expectedCount, expectedTimes) = countExpectedTimes (endTime, startTime) (rStep range)
+            actualCount = NE.length (unCheckpoints actual)
+        pure . counterexample (mconcat
+          [ "now: ", show now
+          , "\nstart time: ", show startTime
+          , "\n(end time: ", show endTime, ")"
+          , "\n(expected times: ", show expectedTimes, ")"
+          , "\nexpected count: ", show expectedCount
+          , "\nactual: ", show actual
+          , "\nactual count: ", show actualCount
+          ]) $ actualCount == expectedCount
 
 -- TODO this function repeats the production code; avoid this somehow?
 getEndTime :: GFSRange -> LocalTime -> LocalTime
-getEndTime (GFSRange _ (CalendarDiffTime limitMonths limitTime)) t =
-  let time = addLocalTime (negate limitTime) t
-      negativeMonths = negate limitMonths
-  in time { localDay = addGregorianMonthsClip negativeMonths (localDay time) }
+getEndTime (GFSRange _ limit) = addDiffTime (scaleCalendarDiffTime (-1) limit)
+
+addDiffTime :: CalendarDiffTime -> LocalTime -> LocalTime
+addDiffTime (CalendarDiffTime diffMonths diffTime) t =
+  let time = addLocalTime diffTime t
+   in time { localDay = addGregorianMonthsClip diffMonths (localDay time) }
+
+countExpectedTimes :: (LocalTime, LocalTime) -> CalendarDiffTime -> (Int, [LocalTime])
+countExpectedTimes (from, to) step =
+  let backwardsStep = scaleCalendarDiffTime (-1) step
+      times = from : (fromMaybe [] . fmap NE.tail . NE.nonEmpty . takeWhile (> from) $ iterate (addDiffTime backwardsStep) to)
+      -- FIXME in theory, counting times backwards should be the same as counting forward,
+      -- but the test sometimes fails with this line (seed 692022403):
+      -- times = to : (fromMaybe [] . fmap NE.tail . NE.nonEmpty . takeWhile (< to) $ iterate (addDiffTime step) from)
+  in (length times, times)
+
+chooseNowAndStartTime :: Gen (LocalTime, LocalTime)
+chooseNowAndStartTime = do
+  now <- unALocalTime <$> arbitrary
+  startTimeOffset <- realToFrac <$> chooseInteger (1, 1_000_000)
+  let startTime = addLocalTime (negate startTimeOffset) now
+  pure (now, startTime)
 
 newtype AGFSRange = AGFSRange GFSRange
   deriving Show

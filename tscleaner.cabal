@@ -33,6 +33,8 @@ library
       Paths_tscleaner
   hs-source-dirs:
       src
+  default-extensions:
+      NumericUnderscores
   ghc-options: -Wall -Wcompat -Wincomplete-record-updates -Werror=incomplete-uni-patterns -Wredundant-constraints -Wmissing-fields -Wmissing-methods
   build-depends:
       base >=4.7 && <5
@@ -46,6 +48,8 @@ executable tscleaner-exe
       Paths_tscleaner
   hs-source-dirs:
       app
+  default-extensions:
+      NumericUnderscores
   ghc-options: -Wall -Wcompat -Wincomplete-record-updates -Werror=incomplete-uni-patterns -Wredundant-constraints -Wmissing-fields -Wmissing-methods -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
@@ -64,6 +68,8 @@ test-suite tscleaner-test
       Paths_tscleaner
   hs-source-dirs:
       test
+  default-extensions:
+      NumericUnderscores
   ghc-options: -Wall -Wcompat -Wincomplete-record-updates -Werror=incomplete-uni-patterns -Wredundant-constraints -Wmissing-fields -Wmissing-methods -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       QuickCheck
