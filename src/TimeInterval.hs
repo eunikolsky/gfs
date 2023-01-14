@@ -16,8 +16,8 @@ import Data.Time.LocalTime
 -- Storing the number of months separately from the number of hours is required
 -- to support calendar-based time calculations, similarly to `CalendarDiffTime`.
 data TimeInterval = TimeInterval
-  { tiMonths :: Int
-  , tiHours :: Int
+  { tiMonths :: !Int
+  , tiHours :: !Int
   }
 
 instance Show TimeInterval where

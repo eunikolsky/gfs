@@ -12,8 +12,8 @@ import Data.Time.LocalTime
 -- to "now" by going back in time by `rStep` from a start time as many times as
 -- necessary until the `rLimit` from `"now".
 data GFSRange = GFSRange
-  { rStep :: TimeInterval
-  , rLimit :: TimeInterval
+  { rStep :: !TimeInterval
+  , rLimit :: !TimeInterval
   }
   deriving Show
 
