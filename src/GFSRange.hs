@@ -4,6 +4,7 @@ module GFSRange
   , applyRange
   , applyRanges
   , mkGFSRanges
+  , unGFSRanges
   ) where
 
 import Checkpoints
@@ -23,7 +24,7 @@ data GFSRange = GFSRange
   deriving Show
 
 -- | A non-empty list of `GFSRange`s sorted by the limit.
-newtype GFSRanges = GFSRanges (NonEmpty GFSRange)
+newtype GFSRanges = GFSRanges { unGFSRanges :: NonEmpty GFSRange }
   deriving Show
 
 mkGFSRanges :: GFSRange -> [GFSRange] -> GFSRanges
@@ -43,4 +44,5 @@ getEndTime :: GFSRange -> Now -> LocalTime
 getEndTime (GFSRange _ limit) = subTimeInterval limit
 
 applyRanges :: GFSRanges -> Now -> StartTime -> Checkpoints
-applyRanges _ _ startTime = mkCheckpoints startTime []
+applyRanges (GFSRanges ranges) now startTime = mkCheckpoints startTime [endTime]
+  where endTime = getEndTime (NE.last ranges) now

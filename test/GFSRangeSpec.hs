@@ -94,6 +94,12 @@ spec = do
         (now, startTime) <- chooseNowAndStartTime
         pure $ startTime `elem` unCheckpoints (applyRanges ranges now startTime)
 
+    it "includes end time of the last range from now" $
+      property $ \(AGFSRanges ranges) -> do
+        (now, startTime) <- chooseNowAndStartTime
+        let endTime = getEndTime (NE.last $ unGFSRanges ranges) now
+        pure $ endTime `elem` NE.toList (unCheckpoints $ applyRanges ranges now startTime)
+
 -- TODO this function repeats the production code; avoid this somehow?
 getEndTime :: GFSRange -> LocalTime -> LocalTime
 getEndTime (GFSRange _ limit) = subTimeInterval limit
