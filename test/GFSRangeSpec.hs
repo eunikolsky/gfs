@@ -50,6 +50,17 @@ spec = do
           , "\nactual count: ", show actualCount
           ]) $ actualCount == expectedCount
 
+    it "returns sorted times" $
+      -- strictly speaking, this currently tests that `Checkpoints` (or
+      -- `unCheckpoints`) produces a sorted list; however, since `Checkpoints`
+      -- is a part of the `applyRange` functionality, it doesn't matter where
+      -- sorting happens (except for which tests fail if sorting is incorrect)
+      property $ \(AGFSRange range) -> do
+        (now, startTime) <- chooseNowAndStartTime
+        let actual = applyRange range now startTime
+            actualTimes = unCheckpoints actual
+        pure $ actualTimes == NE.sort actualTimes
+
 -- TODO this function repeats the production code; avoid this somehow?
 getEndTime :: GFSRange -> LocalTime -> LocalTime
 getEndTime (GFSRange _ limit) = subTimeInterval limit
