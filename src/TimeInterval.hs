@@ -19,6 +19,7 @@ data TimeInterval = TimeInterval
   { tiMonths :: !Int
   , tiHours :: !Int
   }
+  deriving (Eq, Ord)
 
 instance Show TimeInterval where
   show (TimeInterval months hours) = mconcat ["I", show months, "M", show hours, "H"]

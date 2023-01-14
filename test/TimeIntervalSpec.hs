@@ -10,7 +10,7 @@ import Test.Hspec
 import Test.QuickCheck
 
 spec :: Spec
-spec =
+spec = do
   describe "addTimeInterval" $
     it "round-trips with subTimeInterval within a few days" $
       {- the round-trip isn't perfect because of the irregular number of days in months:
@@ -35,6 +35,22 @@ spec =
           , "\n(time - actual) days: ", show dayDiff
           ]) $ (localTimeOfDay actual) == (localTimeOfDay time)
             && dayDiff <= maxDayDiff
+
+  describe "Ord instance" $ do
+    let chooseIncreasingInts = do
+          int0 <- arbitrary :: Gen Int
+          offset <- getPositive <$> arbitrary
+          pure (int0, int0 + offset)
+
+    it "compares months first" $
+      property $ \hour ->
+        forAll chooseIncreasingInts $ \(month0, month1) ->
+          mkTimeInterval month0 hour < mkTimeInterval month1 hour
+
+    it "compares hours second" $
+      property $ \(Positive month) ->
+        forAll chooseIncreasingInts $ \(hour0, hour1) ->
+          mkTimeInterval month hour0 < mkTimeInterval month hour1
 
 newtype ATimeInterval = ATimeInterval TimeInterval
   deriving Show
