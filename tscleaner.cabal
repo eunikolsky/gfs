@@ -28,6 +28,7 @@ library
       Checkpoints
       GFS
       GFSRange
+      TimeInterval
       TimeList
   other-modules:
       Paths_tscleaner
@@ -64,6 +65,7 @@ test-suite tscleaner-test
       CheckpointsSpec
       GFSRangeSpec
       GFSSpec
+      TimeIntervalSpec
       TimeListSpec
       Paths_tscleaner
   hs-source-dirs:
