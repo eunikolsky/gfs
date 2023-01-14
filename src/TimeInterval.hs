@@ -13,6 +13,8 @@ import Data.Time.LocalTime
 -- | Duration of time for the GFS algorithm with the minimum resolution
 -- of one hour — this will be the minimum step for the default settings,
 -- and this makes test data easier to understand.
+-- Storing the number of months separately from the number of hours is required
+-- to support calendar-based time calculations, similarly to `CalendarDiffTime`.
 data TimeInterval = TimeInterval
   { tiMonths :: Int
   , tiHours :: Int

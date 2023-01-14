@@ -2,11 +2,11 @@ module GFSRangeSpec where
 
 import Checkpoints
 import GFSRange
+import TimeInterval
 
 import ALocalTime
 
 import Data.Maybe
-import Data.Time.Calendar
 import Data.Time.LocalTime
 import Test.Hspec
 import Test.QuickCheck hiding (scale)
@@ -52,21 +52,22 @@ spec = do
 
 -- TODO this function repeats the production code; avoid this somehow?
 getEndTime :: GFSRange -> LocalTime -> LocalTime
-getEndTime (GFSRange _ limit) = addDiffTime (scaleCalendarDiffTime (-1) limit)
+getEndTime (GFSRange _ limit) = subTimeInterval limit
 
-addDiffTime :: CalendarDiffTime -> LocalTime -> LocalTime
-addDiffTime (CalendarDiffTime diffMonths diffTime) t =
-  let time = addLocalTime diffTime t
-   in time { localDay = addGregorianMonthsClip diffMonths (localDay time) }
-
-countExpectedTimes :: (LocalTime, LocalTime) -> CalendarDiffTime -> (Int, [LocalTime])
+countExpectedTimes :: (LocalTime, LocalTime) -> TimeInterval -> (Int, [LocalTime])
 countExpectedTimes (from, to) step =
-  let backwardsStep = scaleCalendarDiffTime (-1) step
-      times = from : (fromMaybe [] . fmap NE.tail . NE.nonEmpty . takeWhile (> from) $ iterate (addDiffTime backwardsStep) to)
-      -- FIXME in theory, counting times backwards should be the same as counting forward,
-      -- but the test sometimes fails with this line (seed 692022403):
-      -- times = to : (fromMaybe [] . fmap NE.tail . NE.nonEmpty . takeWhile (< to) $ iterate (addDiffTime step) from)
+  let times = from : (safeTail . takeWhile (> from) $ (`subTimeInterval` to) . (`scaleTimeInterval` step) <$> [0..])
+      -- TODO in theory, counting times backwards should be the same as counting forward,
+      -- but the test sometimes fails with this line (seed 284373677); there is an extra
+      -- time present in the test data, which is exactly 2 days away from start time; the
+      -- test doesn't fail when the number of hours is less than about 20; the reason might
+      -- be that adding many hours changes days, in turn changing months, and then the
+      -- calendar diffs get messed up
+      -- times = to : (safeTail . takeWhile (< to) $ (`addTimeInterval` from) . (`scaleTimeInterval` step) <$> [0..])
   in (length times, times)
+
+safeTail :: [a] -> [a]
+safeTail = fromMaybe [] . fmap NE.tail . NE.nonEmpty
 
 chooseNowAndStartTime :: Gen (LocalTime, LocalTime)
 chooseNowAndStartTime = do
@@ -80,10 +81,10 @@ newtype AGFSRange = AGFSRange GFSRange
 
 instance Arbitrary AGFSRange where
   arbitrary = do
-    months <- chooseInteger (0, 10)
-    let week = 60 * 60 * 24 * 7
-    time <- realToFrac <$> chooseInteger (0, week)
-    let step = CalendarDiffTime months time
-    scale <- chooseInteger (2, 5)
-    let limit = scaleCalendarDiffTime scale step
+    months <- chooseInt (0, 10)
+    let weekInHours = 24 * 7
+    hours <- chooseInt (0, weekInHours)
+    let step = mkTimeInterval months hours
+    scale <- chooseInt (2, 5)
+    let limit = scaleTimeInterval scale step
     pure . AGFSRange $ GFSRange step limit
