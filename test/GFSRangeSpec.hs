@@ -15,6 +15,33 @@ import qualified Data.List.NonEmpty as NE
 spec :: Spec
 spec = do
   describe "applyRange" $ do
+    context "produces correct times (examples)" $ do
+      it "basic example" $
+        let now = read "2023-08-20 23:30:00" :: LocalTime
+            startTime = read "2023-08-10 20:45:00"
+            range = GFSRange
+              { rStep = mkTimeInterval 1 2
+              , rLimit = mkTimeInterval 3 10
+              }
+            endTime = read "2023-05-20 13:30:00"
+            times = fmap read ["2023-07-10 18:45:00", "2023-06-10 16:45:00"]
+            expected = mkCheckpoints endTime times
+            actual = applyRange range now startTime
+        in actual `shouldBe` expected
+
+      it "the last day of a month going through February" $
+        let now = read "2023-03-31 12:00:00" :: LocalTime
+            startTime = now
+            range = GFSRange
+              { rStep = mkTimeInterval 1 0
+              , rLimit = mkTimeInterval 3 0
+              }
+            endTime = read "2022-12-31 12:00:00"
+            times = fmap read ["2023-02-28 12:00:00", "2023-01-31 12:00:00"]
+            expected = mkCheckpoints endTime times
+            actual = applyRange range now startTime
+        in actual `shouldBe` expected
+
     it "doesn't include start time" $
       property $ \(AGFSRange range) -> do
         (now, time) <- chooseNowAndStartTime
