@@ -62,7 +62,6 @@ test-suite tscleaner-test
   main-is: Spec.hs
   other-modules:
       ALocalTime
-      CheckpointsSpec
       GFSRangeSpec
       GFSSpec
       TimeIntervalSpec

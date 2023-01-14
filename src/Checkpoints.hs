@@ -2,13 +2,11 @@ module Checkpoints
   ( Checkpoints
   , mkCheckpoints
   , mkSingletonCheckpoint
-  , offsetsToCheckpoints
   , unCheckpoints
   ) where
 
 -- TODO hide `unCheckpoints` and provide higher-level functions instead
 
-import Data.Time.Clock
 import Data.Time.LocalTime
 import Data.List.NonEmpty (NonEmpty(..))
 import qualified Data.List.NonEmpty as NE
@@ -23,6 +21,3 @@ mkSingletonCheckpoint = Checkpoints . NE.singleton
 
 mkCheckpoints :: LocalTime -> [LocalTime] -> Checkpoints
 mkCheckpoints one = Checkpoints . NE.nub . NE.sort . (one :|)
-
-offsetsToCheckpoints :: LocalTime -> [NominalDiffTime] -> Checkpoints
-offsetsToCheckpoints now offsets = mkCheckpoints now $ fmap ((`addLocalTime` now) . negate) offsets
