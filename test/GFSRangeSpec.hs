@@ -100,6 +100,18 @@ spec = do
         let endTime = getEndTime (NE.last $ unGFSRanges ranges) now
         pure $ endTime `elem` NE.toList (unCheckpoints $ applyRanges ranges now startTime)
 
+    it "returns sorted times" $
+      property $ \(AGFSRanges ranges) -> do
+        (now, startTime) <- chooseNowAndStartTime
+        let actualTimes = unCheckpoints $ applyRanges ranges now startTime
+        pure $ actualTimes == NE.sort actualTimes
+
+    it "returns unique times" $
+      property $ \(AGFSRanges ranges) -> do
+        (now, startTime) <- chooseNowAndStartTime
+        let actualTimes = unCheckpoints $ applyRanges ranges now startTime
+        pure $ actualTimes == NE.nub actualTimes
+
 -- TODO this function repeats the production code; avoid this somehow?
 getEndTime :: GFSRange -> LocalTime -> LocalTime
 getEndTime (GFSRange _ limit) = subTimeInterval limit
