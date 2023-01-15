@@ -46,28 +46,26 @@ spec = do
         in actual `shouldBe` expected
 
     it "doesn't include start time" $
-      property $ \(AGFSRange range) -> do
-        (now, time) <- chooseNowAndStartTime
+      property $ \(AGFSRange range) (ALocalTime now) -> do
+        (startTime, _) <- chooseStartTime range now
         pure . counterexample (mconcat
           [ "now: ", show now
-          , "\nstart time: ", show time
-          ]) $ time `notElem` unCheckpoints (applyRange range now time)
+          , "\nstart time: ", show startTime
+          ]) $ startTime `notElem` unCheckpoints (applyRange range now startTime)
 
     it "includes end time from now" $
-      property $ \(AGFSRange range) -> do
-        (now, time) <- chooseNowAndStartTime
-        let endTime = getEndTime range now
-            actual = applyRange range now time
+      property $ \(AGFSRange range) (ALocalTime now) -> do
+        (startTime, endTime) <- chooseStartTime range now
+        let actual = applyRange range now startTime
         pure . counterexample (mconcat
           [ "endTime: " <> show endTime
           , "\nactual: " <> show actual
           ]) $ endTime `elem` NE.toList (unCheckpoints actual)
 
     it "returns the correct number of times" $
-      property $ \(AGFSRange range) -> do
-        (now, startTime) <- chooseNowAndStartTime
-        let endTime = getEndTime range now
-            actual = applyRange range now startTime
+      property $ \(AGFSRange range) (ALocalTime now) -> do
+        (startTime, endTime) <- chooseStartTime range now
+        let actual = applyRange range now startTime
             (expectedCount, expectedTimes) = countExpectedTimes (endTime, startTime) (rStep range)
             actualCount = NE.length (unCheckpoints actual)
         pure . counterexample (mconcat
@@ -85,11 +83,22 @@ spec = do
       -- `unCheckpoints`) produces a sorted list; however, since `Checkpoints`
       -- is a part of the `applyRange` functionality, it doesn't matter where
       -- sorting happens (except for which tests fail if sorting is incorrect)
-      property $ \(AGFSRange range) -> do
-        (now, startTime) <- chooseNowAndStartTime
+      property $ \(AGFSRange range) (ALocalTime now) -> do
+        (startTime, _) <- chooseStartTime range now
         let actual = applyRange range now startTime
             actualTimes = unCheckpoints actual
         pure $ actualTimes == NE.sort actualTimes
+
+    it "produces all times between end time and start time" $ do
+      property $ \(AGFSRange range) (ALocalTime now) -> do
+        (startTime, endTime) <- chooseStartTime range now
+        let actual = applyRange range now startTime
+            acceptedRange = (endTime, startTime)
+        pure . counterexample (mconcat
+          [ "start time: ", show startTime
+          , "\naccepted range: ", show acceptedRange
+          , "\nactual: ", show actual
+          ]) $ all (`between` acceptedRange) (NE.toList . unCheckpoints $ actual)
 
   describe "applyRanges" $ do
     it "includes now" $
@@ -116,11 +125,12 @@ spec = do
         let endTime = getEndTime (NE.last $ unGFSRanges ranges) now
             actual = applyRanges ranges now
             acceptedRange = (endTime, now)
+            failing = filter (not . flip between acceptedRange) (NE.toList . unCheckpoints $ actual)
         in counterexample (mconcat
-          [ "now: ", show now
-          , "\naccepted range: ", show acceptedRange
+          [ "accepted range: ", show acceptedRange
           , "\nactual: ", show actual
-          ]) $ all (`between` acceptedRange) (NE.toList . unCheckpoints $ actual)
+          , "\n failing: ", show failing
+          ]) $ null failing
 
     it "contains times from each range in order" $ do
       let timesFromRanges :: Maybe (NonEmpty GFSRange) -> LocalTime -> LocalTime -> [LocalTime]
@@ -161,12 +171,17 @@ countExpectedTimes (from, to) step =
 safeTail :: [a] -> [a]
 safeTail = fromMaybe [] . fmap NE.tail . NE.nonEmpty
 
-chooseNowAndStartTime :: Gen (LocalTime, LocalTime)
-chooseNowAndStartTime = do
-  now <- unALocalTime <$> arbitrary
-  startTimeOffset <- realToFrac <$> chooseInteger (1, 1_000_000)
-  let startTime = addLocalTime (negate startTimeOffset) now
-  pure (now, startTime)
+chooseTimeBetween :: (LocalTime, LocalTime) -> Gen LocalTime
+chooseTimeBetween (from, to) = do
+  let diff = to `diffLocalTime` from
+  fromOffset <- fromInteger <$> chooseInteger (0, floor diff - 1)
+  pure $ addLocalTime fromOffset from
+
+chooseStartTime :: GFSRange -> LocalTime -> Gen (LocalTime, LocalTime)
+chooseStartTime range now = do
+  let endTime = getEndTime range now
+  startTime <- chooseTimeBetween (endTime, now)
+  pure (startTime, endTime)
 
 newtype AGFSRange = AGFSRange { unAGFSRange :: GFSRange }
   deriving Show
