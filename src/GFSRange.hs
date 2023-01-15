@@ -44,11 +44,11 @@ applyRange range@(GFSRange step _) now startTime = mkCheckpoints endTime times
 getEndTime :: GFSRange -> Now -> LocalTime
 getEndTime (GFSRange _ limit) = subTimeInterval limit
 
-applyRanges :: GFSRanges -> Now -> StartTime -> Checkpoints
-applyRanges (GFSRanges ranges) now startTime = mkCheckpoints startTime times
+applyRanges :: GFSRanges -> Now -> Checkpoints
+applyRanges (GFSRanges ranges) now = mkCheckpoints now times
   where
-    times = concatMap (NE.toList . unCheckpoints) . snd $ foldl' computeRanges (startTime, []) ranges
-    computeRanges (startTime', accCheckpoints) range =
-      let checkpoints = applyRange range now startTime'
+    times = concatMap (NE.toList . unCheckpoints) . snd $ foldl' computeRanges (now, []) ranges
+    computeRanges (startTime, accCheckpoints) range =
+      let checkpoints = applyRange range now startTime
           newStartTime = oldestCheckpointsTime checkpoints
       in (newStartTime, checkpoints : accCheckpoints)

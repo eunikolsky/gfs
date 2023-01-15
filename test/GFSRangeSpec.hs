@@ -6,6 +6,7 @@ import TimeInterval
 
 import ALocalTime
 
+import Control.Exception (assert)
 import Data.List.NonEmpty (NonEmpty(..))
 import Data.Maybe
 import Data.Time.LocalTime
@@ -91,28 +92,35 @@ spec = do
         pure $ actualTimes == NE.sort actualTimes
 
   describe "applyRanges" $ do
-    it "includes start time" $
-      property $ \(AGFSRanges ranges) -> do
-        (now, startTime) <- chooseNowAndStartTime
-        pure $ startTime `elem` unCheckpoints (applyRanges ranges now startTime)
+    it "includes now" $
+      property $ \(AGFSRanges ranges) (ALocalTime now) ->
+        now `elem` unCheckpoints (applyRanges ranges now)
 
     it "includes end time of the last range from now" $
-      property $ \(AGFSRanges ranges) -> do
-        (now, startTime) <- chooseNowAndStartTime
+      property $ \(AGFSRanges ranges) (ALocalTime now) ->
         let endTime = getEndTime (NE.last $ unGFSRanges ranges) now
-        pure $ endTime `elem` NE.toList (unCheckpoints $ applyRanges ranges now startTime)
+        in endTime `elem` NE.toList (unCheckpoints $ applyRanges ranges now)
 
     it "returns sorted times" $
-      property $ \(AGFSRanges ranges) -> do
-        (now, startTime) <- chooseNowAndStartTime
-        let actualTimes = unCheckpoints $ applyRanges ranges now startTime
-        pure $ actualTimes == NE.sort actualTimes
+      property $ \(AGFSRanges ranges) (ALocalTime now) ->
+        let actualTimes = unCheckpoints $ applyRanges ranges now
+        in actualTimes == NE.sort actualTimes
 
     it "returns unique times" $
-      property $ \(AGFSRanges ranges) -> do
-        (now, startTime) <- chooseNowAndStartTime
-        let actualTimes = unCheckpoints $ applyRanges ranges now startTime
-        pure $ actualTimes == NE.nub actualTimes
+      property $ \(AGFSRanges ranges) (ALocalTime now) ->
+        let actualTimes = unCheckpoints $ applyRanges ranges now
+        in actualTimes == NE.nub actualTimes
+
+    it "produces all times between end time and now" $
+      property $ \(AGFSRanges ranges) (ALocalTime now) ->
+        let endTime = getEndTime (NE.last $ unGFSRanges ranges) now
+            actual = applyRanges ranges now
+            acceptedRange = (endTime, now)
+        in counterexample (mconcat
+          [ "now: ", show now
+          , "\naccepted range: ", show acceptedRange
+          , "\nactual: ", show actual
+          ]) $ all (`between` acceptedRange) (NE.toList . unCheckpoints $ actual)
 
     it "contains times from each range in order" $ do
       let timesFromRanges :: Maybe (NonEmpty GFSRange) -> LocalTime -> LocalTime -> [LocalTime]
@@ -123,11 +131,10 @@ spec = do
                 newStartTime = NE.head times
             in endTime : NE.toList times ++ timesFromRanges (NE.nonEmpty ranges) now newStartTime
 
-      property $ \(AGFSRanges ranges) -> do
-        (now, startTime) <- chooseNowAndStartTime
-        let expected = Set.fromList $ timesFromRanges (Just $ unGFSRanges ranges) now startTime
-            actual = Set.fromList . NE.toList . unCheckpoints $ applyRanges ranges now startTime
-        pure . counterexample (mconcat
+      property $ \(AGFSRanges ranges) (ALocalTime now) ->
+        let expected = Set.fromList $ timesFromRanges (Just $ unGFSRanges ranges) now now
+            actual = Set.fromList . NE.toList . unCheckpoints $ applyRanges ranges now
+        in counterexample (mconcat
           [ "expected: ", show expected
           , "\nactual: ", show actual
           ]) $ expected `Set.isSubsetOf` actual
@@ -135,6 +142,9 @@ spec = do
 -- TODO this function repeats the production code; avoid this somehow?
 getEndTime :: GFSRange -> LocalTime -> LocalTime
 getEndTime (GFSRange _ limit) = subTimeInterval limit
+
+between :: (Ord a, HasCallStack) => a -> (a, a) -> Bool
+between x (lowest, highest) = assert (highest > lowest) $ x >= lowest && x <= highest
 
 countExpectedTimes :: (LocalTime, LocalTime) -> TimeInterval -> (Int, [LocalTime])
 countExpectedTimes (from, to) step =
