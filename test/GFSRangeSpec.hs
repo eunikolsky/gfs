@@ -174,10 +174,13 @@ newtype AGFSRange = AGFSRange { unAGFSRange :: GFSRange }
 instance Arbitrary AGFSRange where
   arbitrary = do
     months <- chooseInt (0, 10)
-    let weekInHours = 24 * 7
-    hours <- chooseInt (0, weekInHours)
+    let dayInHours = 24
+    hours <- chooseInt (0, dayInHours)
     let step = mkTimeInterval months hours
-    scale <- chooseInt (2, 5)
+    -- note: so that the max hours is one week; otherwise it's possible that
+    -- an interval with a few months and a lot of hours is actually larger than
+    -- an interval with many months and a few hours
+    scale <- chooseInt (2, 7)
     let limit = scaleTimeInterval scale step
     pure . AGFSRange $ GFSRange step limit
 

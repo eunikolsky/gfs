@@ -19,6 +19,11 @@ data TimeInterval = TimeInterval
   { tiMonths :: !Int
   , tiHours :: !Int
   }
+  -- TODO is `Ord` even make sense here? since `tiHours` is unlimited, it may
+  -- make one interval bigger than another with fewer `tiMonths`; multiplying
+  -- months by a constant in addition to hours isn't valid for the same reason
+  -- that we're using calendar-based calculations — it may mess up time
+  -- calculations
   deriving (Eq, Ord)
 
 instance Show TimeInterval where
