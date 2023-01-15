@@ -26,6 +26,7 @@ ghc-options:
   - -Wall
   - -Wcompat
   - -Wincomplete-record-updates
+  - -Werror=incomplete-patterns
   - -Werror=incomplete-uni-patterns
   - -Wredundant-constraints
   - -Wmissing-fields
@@ -62,6 +63,7 @@ tests:
     dependencies:
     - tscleaner
     - QuickCheck
+    - containers
     - hspec
     - hspec-discover
     - monad-loops

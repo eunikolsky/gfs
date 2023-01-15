@@ -6,11 +6,13 @@ import TimeInterval
 
 import ALocalTime
 
+import Data.List.NonEmpty (NonEmpty(..))
 import Data.Maybe
 import Data.Time.LocalTime
 import Test.Hspec
 import Test.QuickCheck hiding (scale)
 import qualified Data.List.NonEmpty as NE
+import qualified Data.Set as Set
 
 spec :: Spec
 spec = do
@@ -111,6 +113,24 @@ spec = do
         (now, startTime) <- chooseNowAndStartTime
         let actualTimes = unCheckpoints $ applyRanges ranges now startTime
         pure $ actualTimes == NE.nub actualTimes
+
+    it "contains times from each range in order" $ do
+      let timesFromRanges :: Maybe (NonEmpty GFSRange) -> LocalTime -> LocalTime -> [LocalTime]
+          timesFromRanges Nothing _ _ = []
+          timesFromRanges (Just (range :| ranges)) now startTime =
+            let endTime = getEndTime range now
+                times = unCheckpoints $ applyRange range now startTime
+                newStartTime = NE.head times
+            in endTime : NE.toList times ++ timesFromRanges (NE.nonEmpty ranges) now newStartTime
+
+      property $ \(AGFSRanges ranges) -> do
+        (now, startTime) <- chooseNowAndStartTime
+        let expected = Set.fromList $ timesFromRanges (Just $ unGFSRanges ranges) now startTime
+            actual = Set.fromList . NE.toList . unCheckpoints $ applyRanges ranges now startTime
+        pure . counterexample (mconcat
+          [ "expected: ", show expected
+          , "\nactual: ", show actual
+          ]) $ expected `Set.isSubsetOf` actual
 
 -- TODO this function repeats the production code; avoid this somehow?
 getEndTime :: GFSRange -> LocalTime -> LocalTime

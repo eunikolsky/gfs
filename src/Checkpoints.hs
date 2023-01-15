@@ -2,6 +2,7 @@ module Checkpoints
   ( Checkpoints
   , mkCheckpoints
   , mkSingletonCheckpoint
+  , oldestCheckpointsTime
   , unCheckpoints
   ) where
 
@@ -21,3 +22,6 @@ mkSingletonCheckpoint = Checkpoints . NE.singleton
 
 mkCheckpoints :: LocalTime -> [LocalTime] -> Checkpoints
 mkCheckpoints one = Checkpoints . NE.nub . NE.sort . (one :|)
+
+oldestCheckpointsTime :: Checkpoints -> LocalTime
+oldestCheckpointsTime = NE.head . unCheckpoints

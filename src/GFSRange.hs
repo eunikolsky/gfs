@@ -10,6 +10,7 @@ module GFSRange
 import Checkpoints
 import TimeInterval
 
+import Data.List (foldl')
 import Data.List.NonEmpty (NonEmpty(..))
 import Data.Time.LocalTime
 import qualified Data.List.NonEmpty as NE
@@ -44,5 +45,10 @@ getEndTime :: GFSRange -> Now -> LocalTime
 getEndTime (GFSRange _ limit) = subTimeInterval limit
 
 applyRanges :: GFSRanges -> Now -> StartTime -> Checkpoints
-applyRanges (GFSRanges ranges) now startTime = mkCheckpoints startTime [endTime]
-  where endTime = getEndTime (NE.last ranges) now
+applyRanges (GFSRanges ranges) now startTime = mkCheckpoints startTime times
+  where
+    times = concatMap (NE.toList . unCheckpoints) . snd $ foldl' computeRanges (startTime, []) ranges
+    computeRanges (startTime', accCheckpoints) range =
+      let checkpoints = applyRange range now startTime'
+          newStartTime = oldestCheckpointsTime checkpoints
+      in (newStartTime, checkpoints : accCheckpoints)
