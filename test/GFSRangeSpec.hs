@@ -176,7 +176,8 @@ instance Arbitrary AGFSRange where
     months <- chooseInt (0, 10)
     let dayInHours = 24
     hours <- chooseInt (0, dayInHours)
-    let step = mkTimeInterval months hours
+    let hours' = if months == 0 && hours == 0 then 1 else hours
+    let step = mkTimeInterval months hours'
     -- note: so that the max hours is one week; otherwise it's possible that
     -- an interval with a few months and a lot of hours is actually larger than
     -- an interval with many months and a few hours
