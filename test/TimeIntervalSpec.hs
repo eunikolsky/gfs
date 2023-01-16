@@ -36,15 +36,7 @@ spec = do
           ]) $ (localTimeOfDay actual) == (localTimeOfDay time)
             && dayDiff <= maxDayDiff
 
-    it "adding bigger interval produces bigger result" $ do
-      let chooseIncreasingIntervals :: Gen (TimeInterval, TimeInterval)
-          chooseIncreasingIntervals = do
-            months <- chooseInt (0, 24)
-            hours <- chooseInt (0, 72)
-            (mOffset, hOffset) <- (,) <$> chooseInt (1, 24) <*> chooseInt (1, 72)
-            pure (mkTimeInterval months hours
-                , mkTimeInterval (months + mOffset) (hours + hOffset))
-
+    it "adding bigger interval produces bigger result" $
       property $ \(ALocalTime t) ->
         forAll chooseIncreasingIntervals $ \(ti0, ti1) ->
           addTimeInterval ti1 t > addTimeInterval ti0 t
@@ -58,6 +50,22 @@ spec = do
         addTimeInterval ti1month25hours t0430 `shouldBe` read "2023-05-31 01:00:00"
         -- when adding hours first: "2023-06-30 01:00:00"
         addTimeInterval ti1month25hours t0530 `shouldBe` read "2023-07-01 01:00:00"
+
+  describe "subTimeInterval" $ do
+    it "subtracting bigger interval produces smaller result" $
+      property $ \(ALocalTime t) ->
+        forAll chooseIncreasingIntervals $ \(ti0, ti1) ->
+          subTimeInterval ti1 t < subTimeInterval ti0 t
+
+    it "uses end days if possible (example)" $
+      let t0430 = read "2023-04-30 00:00:00"
+          t0531 = read "2023-05-31 00:00:00"
+          ti1month25hours = mkTimeInterval 1 25
+      in do
+        -- when subtracting months first: "2023-03-28 23:00:00"
+        subTimeInterval ti1month25hours t0430 `shouldBe` read "2023-03-28 23:00:00"
+        -- when subtracting months first: "2023-04-28 23:00:00"
+        subTimeInterval ti1month25hours t0531 `shouldBe` read "2023-04-29 23:00:00"
 
   describe "Ord instance" $ do
     let chooseIncreasingInts = do
@@ -74,6 +82,14 @@ spec = do
       property $ \(Positive month) ->
         forAll chooseIncreasingInts $ \(hour0, hour1) ->
           mkTimeInterval month hour0 < mkTimeInterval month hour1
+
+chooseIncreasingIntervals :: Gen (TimeInterval, TimeInterval)
+chooseIncreasingIntervals = do
+  months <- chooseInt (0, 24)
+  hours <- chooseInt (0, 72)
+  (mOffset, hOffset) <- (,) <$> chooseInt (1, 24) <*> chooseInt (1, 72)
+  pure (mkTimeInterval months hours
+      , mkTimeInterval (months + mOffset) (hours + hOffset))
 
 newtype ATimeInterval = ATimeInterval TimeInterval
   deriving Show

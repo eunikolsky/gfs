@@ -49,7 +49,8 @@ addMonths (TimeInterval months _) time = time
   }
 
 subTimeInterval :: TimeInterval -> LocalTime -> LocalTime
-subTimeInterval int = addTimeInterval (scaleTimeInterval (-1) int)
+subTimeInterval ti = addMonths negativeTi . addHours negativeTi
+  where negativeTi = scaleTimeInterval (-1) ti
 
 scaleTimeInterval :: Int -> TimeInterval -> TimeInterval
 scaleTimeInterval x (TimeInterval months hours) = TimeInterval
