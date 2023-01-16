@@ -1,5 +1,7 @@
 module TimeInterval
   ( TimeInterval -- not exporting the constructor
+  , addHours
+  , addMonths
   , addTimeInterval
   , mkTimeInterval
   , scaleTimeInterval
@@ -33,14 +35,18 @@ mkTimeInterval :: Int -> Int -> TimeInterval
 mkTimeInterval months hours = TimeInterval { tiMonths = months, tiHours = hours }
 
 addTimeInterval :: TimeInterval -> LocalTime -> LocalTime
-addTimeInterval (TimeInterval months hours) = addMonths . addHours
+addTimeInterval ti = addHours ti . addMonths ti
+
+addHours :: TimeInterval -> LocalTime -> LocalTime
+addHours (TimeInterval _ hours) = addLocalTime diffTime
   where
     diffTime :: NominalDiffTime
     diffTime = realToFrac $ hours * secondsInHour
-    addHours = addLocalTime diffTime
-    addMonths time = time
-      { localDay = addGregorianMonthsClip (fromIntegral months) (localDay time)
-      }
+
+addMonths :: TimeInterval -> LocalTime -> LocalTime
+addMonths (TimeInterval months _) time = time
+  { localDay = addGregorianMonthsClip (fromIntegral months) (localDay time)
+  }
 
 subTimeInterval :: TimeInterval -> LocalTime -> LocalTime
 subTimeInterval int = addTimeInterval (scaleTimeInterval (-1) int)
