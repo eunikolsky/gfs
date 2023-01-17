@@ -7,6 +7,7 @@ import TimeInterval
 import ALocalTime
 
 import Control.Exception (assert)
+import Data.List (sort)
 import Data.List.NonEmpty (NonEmpty(..))
 import Data.Maybe
 import Data.Time.LocalTime
@@ -26,9 +27,11 @@ spec = do
               { rStep = mkTimeInterval 1 2
               , rLimit = mkTimeInterval 3 10
               }
-            endTime = read "2023-05-20 13:30:00"
-            times = fmap read ["2023-07-10 18:45:00", "2023-06-10 16:45:00"]
-            expected = mkCheckpoints endTime times
+            expected = fmap read
+              [ "2023-05-20 13:30:00"
+              , "2023-06-10 16:45:00"
+              , "2023-07-10 18:45:00"
+              ]
             actual = applyRange range now startTime
         in actual `shouldBe` expected
 
@@ -39,9 +42,11 @@ spec = do
               { rStep = mkTimeInterval 1 0
               , rLimit = mkTimeInterval 3 0
               }
-            endTime = read "2022-12-31 12:00:00"
-            times = fmap read ["2023-02-28 12:00:00", "2023-01-31 12:00:00"]
-            expected = mkCheckpoints endTime times
+            expected = fmap read
+              [ "2022-12-31 12:00:00"
+              , "2023-01-31 12:00:00"
+              , "2023-02-28 12:00:00"
+              ]
             actual = applyRange range now startTime
         in actual `shouldBe` expected
 
@@ -51,7 +56,7 @@ spec = do
         pure . counterexample (mconcat
           [ "now: ", show now
           , "\nstart time: ", show startTime
-          ]) $ startTime `notElem` unCheckpoints (applyRange range now startTime)
+          ]) $ startTime `notElem` applyRange range now startTime
 
     it "includes end time from now" $
       property $ \(AGFSRange range) (ALocalTime now) -> do
@@ -60,14 +65,14 @@ spec = do
         pure . counterexample (mconcat
           [ "endTime: " <> show endTime
           , "\nactual: " <> show actual
-          ]) $ endTime `elem` NE.toList (unCheckpoints actual)
+          ]) $ endTime `elem` actual
 
     it "returns the correct number of times" $
       property $ \(AGFSRange range) (ALocalTime now) -> do
         (startTime, endTime) <- chooseStartTime range now
         let actual = applyRange range now startTime
             (expectedCount, expectedTimes) = countExpectedTimes (endTime, startTime) (rStep range)
-            actualCount = NE.length (unCheckpoints actual)
+            actualCount = length actual
         pure . counterexample (mconcat
           [ "now: ", show now
           , "\nstart time: ", show startTime
@@ -86,10 +91,9 @@ spec = do
       property $ \(AGFSRange range) (ALocalTime now) -> do
         (startTime, _) <- chooseStartTime range now
         let actual = applyRange range now startTime
-            actualTimes = unCheckpoints actual
-        pure $ actualTimes == NE.sort actualTimes
+        pure $ actual == sort actual
 
-    it "produces all times between end time and start time" $ do
+    it "produces all times between end time and start time" $
       property $ \(AGFSRange range) (ALocalTime now) -> do
         (startTime, endTime) <- chooseStartTime range now
         let actual = applyRange range now startTime
@@ -98,7 +102,23 @@ spec = do
           [ "start time: ", show startTime
           , "\naccepted range: ", show acceptedRange
           , "\nactual: ", show actual
-          ]) $ all (`between` acceptedRange) (NE.toList . unCheckpoints $ actual)
+          ]) $ all (`between` acceptedRange) actual
+
+    it "produces nothing when end time is bigger than start time" $ do
+      let chooseStartTimeBeforeEndTime :: GFSRange -> LocalTime -> Gen (LocalTime, LocalTime)
+          chooseStartTimeBeforeEndTime range now = do
+            let endTime = getEndTime range now
+            offset <- realToFrac . getPositive <$> (arbitrary :: Gen (Positive Integer))
+            pure (addLocalTime (negate offset) endTime, endTime)
+
+      property $ \(AGFSRange range) (ALocalTime now) -> do
+        (startTime, endTime) <- chooseStartTimeBeforeEndTime range now
+        let actual = applyRange range now startTime
+        -- TODO deduplicate this `counterexample $ mconcat …` pattern
+        pure . counterexample (mconcat
+          [ "end time: ", show endTime
+          , "\nactual: ", show actual
+          ]) $ actual == []
 
   describe "applyRanges" $ do
     it "includes now" $
@@ -137,9 +157,11 @@ spec = do
           timesFromRanges Nothing _ _ = []
           timesFromRanges (Just (range :| ranges)) now startTime =
             let endTime = getEndTime range now
-                times = unCheckpoints $ applyRange range now startTime
-                newStartTime = NE.head times
-            in endTime : NE.toList times ++ timesFromRanges (NE.nonEmpty ranges) now newStartTime
+                endTimeIsCorrect = endTime < startTime
+                times = applyRange range now startTime
+                newStartTime = maybe startTime NE.head $ NE.nonEmpty times
+                newTimes = times ++ timesFromRanges (NE.nonEmpty ranges) now newStartTime
+            in if endTimeIsCorrect then endTime : newTimes else newTimes
 
       property $ \(AGFSRanges ranges) (ALocalTime now) ->
         let expected = Set.fromList $ timesFromRanges (Just $ unGFSRanges ranges) now now

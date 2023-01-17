@@ -10,8 +10,9 @@ module GFSRange
 import Checkpoints
 import TimeInterval
 
-import Data.List (foldl')
+import Data.List (foldl', sort)
 import Data.List.NonEmpty (NonEmpty(..))
+import Data.Maybe
 import Data.Time.LocalTime
 import qualified Data.List.NonEmpty as NE
 
@@ -34,9 +35,11 @@ mkGFSRanges range = GFSRanges . NE.sortWith rLimit . (range :|)
 type StartTime = LocalTime
 type Now = LocalTime
 
-applyRange :: GFSRange -> Now -> StartTime -> Checkpoints
-applyRange range@(GFSRange step _) now startTime = mkCheckpoints endTime times
+applyRange :: GFSRange -> Now -> StartTime -> [LocalTime]
+applyRange range@(GFSRange step _) now startTime = sort $
+  (if shouldAddEndTime then (endTime :) else id) times
   where
+    shouldAddEndTime = endTime < startTime
     endTime = getEndTime range now
     times = takeWhile (> endTime)
       $ flip subTimeInterval startTime . flip scaleTimeInterval step <$> [1..]
@@ -47,8 +50,11 @@ getEndTime (GFSRange _ limit) = subTimeInterval limit
 applyRanges :: GFSRanges -> Now -> Checkpoints
 applyRanges (GFSRanges ranges) now = mkCheckpoints now times
   where
-    times = concatMap (NE.toList . unCheckpoints) . snd $ foldl' computeRanges (now, []) ranges
+    times = snd $ foldl' computeRanges (now, []) ranges
     computeRanges (startTime, accCheckpoints) range =
       let checkpoints = applyRange range now startTime
-          newStartTime = oldestCheckpointsTime checkpoints
-      in (newStartTime, checkpoints : accCheckpoints)
+          newStartTime = fromMaybe startTime $ maybeHead checkpoints
+      in (newStartTime, checkpoints <> accCheckpoints)
+
+maybeHead :: [a] -> Maybe a
+maybeHead = listToMaybe
