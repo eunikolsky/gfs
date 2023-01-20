@@ -1,6 +1,7 @@
 module GFS.Internal.GFSRange
   ( GFSRange(..)
   , GFSRanges
+  , Now
   , applyRange
   , applyRanges
   , mkGFSRanges

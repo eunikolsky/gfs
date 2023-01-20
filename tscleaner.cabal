@@ -25,6 +25,7 @@ source-repository head
 
 library
   exposed-modules:
+      GFS
       GFS.Internal.Checkpoints
       GFS.Internal.GFS
       GFS.Internal.GFSRange
@@ -66,6 +67,7 @@ test-suite tscleaner-test
       GFS.Internal.GFSSpec
       GFS.Internal.TimeIntervalSpec
       GFS.Internal.TimeListSpec
+      GFSSpec
       Paths_tscleaner
   hs-source-dirs:
       test
