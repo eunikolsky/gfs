@@ -1,8 +1,8 @@
-module TimeIntervalSpec where
+module GFS.Internal.TimeIntervalSpec where
 
-import TimeInterval
+import GFS.Internal.TimeInterval
 
-import ALocalTime
+import GFS.Internal.ALocalTime
 
 import Data.Time.Calendar
 import Data.Time.LocalTime

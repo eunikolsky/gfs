@@ -1,4 +1,4 @@
-module GFSRange
+module GFS.Internal.GFSRange
   ( GFSRange(..)
   , GFSRanges
   , applyRange
@@ -7,8 +7,8 @@ module GFSRange
   , unGFSRanges
   ) where
 
-import Checkpoints
-import TimeInterval
+import GFS.Internal.Checkpoints
+import GFS.Internal.TimeInterval
 
 import Data.List (foldl', sort)
 import Data.List.NonEmpty (NonEmpty(..))

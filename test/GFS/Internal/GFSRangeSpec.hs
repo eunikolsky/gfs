@@ -1,10 +1,10 @@
-module GFSRangeSpec where
+module GFS.Internal.GFSRangeSpec where
 
-import Checkpoints
-import GFSRange
-import TimeInterval
+import GFS.Internal.Checkpoints
+import GFS.Internal.GFSRange
+import GFS.Internal.TimeInterval
 
-import ALocalTime
+import GFS.Internal.ALocalTime
 
 import Control.Exception (assert)
 import Data.List (sort)

@@ -1,4 +1,4 @@
-module ALocalTime where
+module GFS.Internal.ALocalTime where
 
 import Data.Time.Calendar.OrdinalDate
 import Data.Time.LocalTime

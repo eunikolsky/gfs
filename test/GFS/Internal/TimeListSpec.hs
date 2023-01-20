@@ -1,7 +1,7 @@
-module TimeListSpec where
+module GFS.Internal.TimeListSpec where
 
-import ALocalTime
-import TimeList
+import GFS.Internal.ALocalTime
+import GFS.Internal.TimeList
 
 import Data.List (sort)
 import Test.Hspec

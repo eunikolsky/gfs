@@ -1,4 +1,4 @@
-module TimeInterval
+module GFS.Internal.TimeInterval
   ( TimeInterval -- not exporting the constructor
   , addHours
   , addMonths

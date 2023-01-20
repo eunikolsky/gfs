@@ -1,9 +1,9 @@
-module GFS
+module GFS.Internal.GFS
   ( gfsRemove
   ) where
 
-import Checkpoints
-import TimeList
+import GFS.Internal.Checkpoints
+import GFS.Internal.TimeList
 
 import Data.List.NonEmpty ((<|), NonEmpty(..))
 import qualified Data.List.NonEmpty as NE

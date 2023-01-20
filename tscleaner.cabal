@@ -25,11 +25,11 @@ source-repository head
 
 library
   exposed-modules:
-      Checkpoints
-      GFS
-      GFSRange
-      TimeInterval
-      TimeList
+      GFS.Internal.Checkpoints
+      GFS.Internal.GFS
+      GFS.Internal.GFSRange
+      GFS.Internal.TimeInterval
+      GFS.Internal.TimeList
   other-modules:
       Paths_tscleaner
   hs-source-dirs:
@@ -61,11 +61,11 @@ test-suite tscleaner-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
-      ALocalTime
-      GFSRangeSpec
-      GFSSpec
-      TimeIntervalSpec
-      TimeListSpec
+      GFS.Internal.ALocalTime
+      GFS.Internal.GFSRangeSpec
+      GFS.Internal.GFSSpec
+      GFS.Internal.TimeIntervalSpec
+      GFS.Internal.TimeListSpec
       Paths_tscleaner
   hs-source-dirs:
       test

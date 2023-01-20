@@ -1,10 +1,10 @@
-module GFSSpec where
+module GFS.Internal.GFSSpec where
 
-import Checkpoints
-import GFS
-import TimeList
+import GFS.Internal.Checkpoints
+import GFS.Internal.GFS
+import GFS.Internal.TimeList
 
-import ALocalTime
+import GFS.Internal.ALocalTime
 
 import Control.Monad
 import Data.Bifunctor

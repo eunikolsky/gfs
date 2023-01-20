@@ -1,4 +1,4 @@
-module Checkpoints
+module GFS.Internal.Checkpoints
   ( Checkpoints
   , mkCheckpoints
   , mkSingletonCheckpoint

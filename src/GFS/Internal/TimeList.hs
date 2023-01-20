@@ -1,4 +1,4 @@
-module TimeList
+module GFS.Internal.TimeList
   ( TimeList
   , mkTimeList
   , keepNewestTime
