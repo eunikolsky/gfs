@@ -8,7 +8,7 @@ import ALocalTime
 
 import Control.Monad
 import Data.Bifunctor
-import Data.List (foldl', singleton, sort)
+import Data.List ((\\), foldl', singleton, sort)
 import Data.List.NonEmpty (NonEmpty)
 import Data.Time.Clock
 import Data.Time.LocalTime
@@ -94,6 +94,14 @@ spec = do
           let checkpointPairs = adjacentPairs . unCheckpoints $ checkpoints
           (times, timesWithoutOldest) <- chooseTimesInEachRange checkpointPairs
           verifyRemoved checkpoints times timesWithoutOldest
+
+      it "is idempotent" $
+        property $ \(ALocalTime now) -> do
+          checkpoints <- chooseCheckpoints now
+          let checkpointPairs = adjacentPairs . unCheckpoints $ checkpoints
+          (times, _) <- chooseTimesInEachRange checkpointPairs
+          let left = mkTimeList $ unTimeList times \\ unTimeList (gfsRemove checkpoints times)
+          verifyRemoved checkpoints left $ mkTimeList []
 
 verifyRemoved :: Checkpoints -> TimeList -> TimeList -> Gen Property
 verifyRemoved checkpoints times expected =
