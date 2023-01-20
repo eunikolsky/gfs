@@ -3,9 +3,14 @@ module GFS
 
   -- re-exports
   , GFSRange(..)
+  , GFSRanges
+  , Now
+  , TimeList
+  , addTimeInterval
   , mkGFSRanges
   , mkTimeInterval
   , mkTimeList
+  , unTimeList
   ) where
 
 import GFS.Internal.GFSRange
