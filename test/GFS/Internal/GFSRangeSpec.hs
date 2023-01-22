@@ -27,12 +27,13 @@ spec = do
               { rStep = mkTimeInterval 1 2
               , rLimit = mkTimeInterval 3 10
               }
+            endTime = read "2022-01-01 00:00:00"
             expected = fmap read
               [ "2023-05-20 13:30:00"
               , "2023-06-10 16:45:00"
               , "2023-07-10 18:45:00"
               ]
-            actual = applyRange range now startTime
+            actual = applyRange endTime range now startTime
         in actual `shouldBe` expected
 
       it "the last day of a month going through February" $
@@ -42,26 +43,27 @@ spec = do
               { rStep = mkTimeInterval 1 0
               , rLimit = mkTimeInterval 3 0
               }
+            endTime = read "2022-01-01 00:00:00"
             expected = fmap read
               [ "2022-12-31 12:00:00"
               , "2023-01-31 12:00:00"
               , "2023-02-28 12:00:00"
               ]
-            actual = applyRange range now startTime
+            actual = applyRange endTime range now startTime
         in actual `shouldBe` expected
 
     it "doesn't include start time" $
       property $ \(AGFSRange range) (ALocalTime now) -> do
-        (startTime, _) <- chooseStartTime range now
+        (startTime, endTime) <- chooseStartTime range now
         pure . counterexample (mconcat
           [ "now: ", show now
           , "\nstart time: ", show startTime
-          ]) $ startTime `notElem` applyRange range now startTime
+          ]) $ startTime `notElem` applyRange endTime range now startTime
 
     it "includes end time from now" $
       property $ \(AGFSRange range) (ALocalTime now) -> do
         (startTime, endTime) <- chooseStartTime range now
-        let actual = applyRange range now startTime
+        let actual = applyRange endTime range now startTime
         pure . counterexample (mconcat
           [ "endTime: " <> show endTime
           , "\nactual: " <> show actual
@@ -70,7 +72,7 @@ spec = do
     it "returns the correct number of times" $
       property $ \(AGFSRange range) (ALocalTime now) -> do
         (startTime, endTime) <- chooseStartTime range now
-        let actual = applyRange range now startTime
+        let actual = applyRange endTime range now startTime
             (expectedCount, expectedTimes) = countExpectedTimes (endTime, startTime) (rStep range)
             actualCount = length actual
         pure . counterexample (mconcat
@@ -89,14 +91,14 @@ spec = do
       -- is a part of the `applyRange` functionality, it doesn't matter where
       -- sorting happens (except for which tests fail if sorting is incorrect)
       property $ \(AGFSRange range) (ALocalTime now) -> do
-        (startTime, _) <- chooseStartTime range now
-        let actual = applyRange range now startTime
+        (startTime, endTime) <- chooseStartTime range now
+        let actual = applyRange endTime range now startTime
         pure $ actual == sort actual
 
     it "produces all times between end time and start time" $
       property $ \(AGFSRange range) (ALocalTime now) -> do
         (startTime, endTime) <- chooseStartTime range now
-        let actual = applyRange range now startTime
+        let actual = applyRange endTime range now startTime
             acceptedRange = (endTime, startTime)
         pure . counterexample (mconcat
           [ "start time: ", show startTime
@@ -113,7 +115,7 @@ spec = do
 
       property $ \(AGFSRange range) (ALocalTime now) -> do
         (startTime, endTime) <- chooseStartTimeBeforeEndTime range now
-        let actual = applyRange range now startTime
+        let actual = applyRange endTime range now startTime
         -- TODO deduplicate this `counterexample $ mconcat …` pattern
         pure . counterexample (mconcat
           [ "end time: ", show endTime
@@ -213,7 +215,9 @@ spec = do
     it "includes end time of the last range from now" $
       property $ \(AGFSRanges ranges) (ALocalTime now) ->
         let endTime = getEndTime (NE.last $ unGFSRanges ranges) now
-        in endTime `elem` NE.toList (unCheckpoints $ applyRanges ranges now)
+        in counterexample (mconcat
+          [ "end time: ", show endTime
+          ]) $ endTime `elem` NE.toList (unCheckpoints $ applyRanges ranges now)
 
     it "returns sorted times" $
       property $ \(AGFSRanges ranges) (ALocalTime now) ->
@@ -238,23 +242,26 @@ spec = do
           ]) $ null failing
 
     it "contains times from each range in order" $ do
-      let timesFromRanges :: Maybe (NonEmpty GFSRange) -> LocalTime -> LocalTime -> [LocalTime]
-          timesFromRanges Nothing _ _ = []
-          timesFromRanges (Just (range :| ranges)) now startTime =
+      let timesFromRanges :: Maybe (NonEmpty GFSRange) -> LocalTime -> LocalTime -> LocalTime -> [LocalTime]
+          timesFromRanges Nothing _ _ _ = []
+          timesFromRanges (Just (range :| ranges)) totalEndTime now startTime =
             let endTime = getEndTime range now
-                endTimeIsCorrect = endTime < startTime
-                times = applyRange range now startTime
+                endTimeIsCorrect = endTime < startTime && endTime >= totalEndTime
+                times = applyRange totalEndTime range now startTime
                 newStartTime = maybe startTime NE.head $ NE.nonEmpty times
-                newTimes = times ++ timesFromRanges (NE.nonEmpty ranges) now newStartTime
+                newTimes = times ++ timesFromRanges (NE.nonEmpty ranges) totalEndTime now newStartTime
             in if endTimeIsCorrect then endTime : newTimes else newTimes
 
       property $ \(AGFSRanges ranges) (ALocalTime now) ->
-        let expected = Set.fromList $ timesFromRanges (Just $ unGFSRanges ranges) now now
+        let expected = Set.fromList $ timesFromRanges (Just $ unGFSRanges ranges) totalEndTime now now
+            totalEndTime = getEndTime (NE.last . unGFSRanges $ ranges) now
             actual = Set.fromList . NE.toList . unCheckpoints $ applyRanges ranges now
+            missingInActual = expected `Set.difference` actual
         in counterexample (mconcat
           [ "expected: ", show expected
           , "\nactual: ", show actual
-          ]) $ expected `Set.isSubsetOf` actual
+          , "\nmissing in actual: ", show missingInActual
+          ]) $ null missingInActual
 
 -- TODO this function repeats the production code; avoid this somehow?
 getEndTime :: GFSRange -> LocalTime -> LocalTime

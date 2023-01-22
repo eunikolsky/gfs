@@ -35,10 +35,14 @@ mkGFSRanges range = GFSRanges . NE.sortWith rLimit . (range :|)
 
 type StartTime = LocalTime
 type Now = LocalTime
+type TotalEndTime = LocalTime
 
-applyRange :: GFSRange -> Now -> StartTime -> [LocalTime]
-applyRange range@(GFSRange step _) now startTime = sort $
-  (if shouldAddEndTime then (endTime :) else id) times
+applyRange :: TotalEndTime -> GFSRange -> Now -> StartTime -> [LocalTime]
+applyRange totalEndTime range@(GFSRange step _) now startTime
+  = sort
+  . filter (>= totalEndTime)
+  .  (if shouldAddEndTime then (endTime :) else id)
+  $ times
   where
     shouldAddEndTime = endTime < startTime
     endTime = getEndTime range now
@@ -51,9 +55,10 @@ getEndTime (GFSRange _ limit) = subTimeInterval limit
 applyRanges :: GFSRanges -> Now -> Checkpoints
 applyRanges (GFSRanges ranges) now = mkCheckpoints now times
   where
+    totalEndTime = getEndTime (NE.last ranges) now
     times = snd $ foldl' computeRanges (now, []) ranges
     computeRanges (startTime, accCheckpoints) range =
-      let checkpoints = applyRange range now startTime
+      let checkpoints = applyRange totalEndTime range now startTime
           newStartTime = fromMaybe startTime $ maybeHead checkpoints
       in (newStartTime, checkpoints <> accCheckpoints)
 
