@@ -2,7 +2,10 @@ module GFSSpec where
 
 import GFS
 
-import Data.List ((\\))
+import Data.List ((\\), foldl')
+import Data.Time.Calendar
+import Data.Time.Clock
+import Data.Time.LocalTime
 import Test.Hspec
 
 spec :: Spec
@@ -85,7 +88,7 @@ spec =
     it "shifting now by month keeps \"most\" of old data (example)" $ do
       -- I think it's more obvious for a human to see what's left, not what's removed,
       -- after two cleanups in this test
-      let shiftedNow = addTimeInterval month now -- "2023-12-19 22:00:00"
+      let shiftedNowByMonth = addTimeInterval month now -- "2023-12-19 22:00:00"
           expectedLeft = mkTimeList $ fmap read
             -- monthly [2022-12-19 22:00:00; 2023-11-19 22:00:00):
             [ "2022-12-19 22:00:00"
@@ -104,9 +107,23 @@ spec =
             , "2023-12-31 23:59:59"
             ]
 
-          left = gfsLeft ranges now times
+          leftAfterNow = gfsLeft ranges now times
 
-      gfsLeft ranges shiftedNow left `shouldBe` expectedLeft
+      gfsLeft ranges shiftedNowByMonth leftAfterNow `shouldBe` expectedLeft
+
+    it "shifting now day-by-day for a month is the same as shifting now by month (example)" $ do
+      let shiftedNowByMonth = addTimeInterval month now
+
+          leftAfterMonth = gfsLeft ranges shiftedNowByMonth times
+
+          numDays = diffDays (localDay shiftedNowByMonth) (localDay now)
+          -- note: the range starts with `0`, not `1`, so that the kept times match those from
+          -- `leftAfterMonth`; otherwise, `2022-12-19 22:00:00` is missing from `leftAfterDays`;
+          -- this change seems correct in this case, but may not be correct for all cases
+          shiftedNowsByDays = (flip addLocalTime now) . (* nominalDay) . realToFrac <$> [0..numDays]
+          leftAfterDays = foldl' (\newTimes newNow -> gfsLeft ranges newNow newTimes) times shiftedNowsByDays
+
+      leftAfterDays `shouldBe` leftAfterMonth
 
 gfsLeft :: GFSRanges -> Now -> TimeList -> TimeList
 gfsLeft ranges now times = mkTimeList $ unTimeList times \\ unTimeList (gfsRemove ranges now times)
