@@ -5,12 +5,15 @@ module GFS.Internal.TimeInterval
   , addTimeInterval
   , mkTimeInterval
   , scaleTimeInterval
+  , showTimeInterval
   , subTimeInterval
   ) where
 
+import Data.Text (Text)
 import Data.Time.Calendar
 import Data.Time.Clock
 import Data.Time.LocalTime
+import qualified Data.Text as T
 
 -- | Duration of time for the GFS algorithm with the minimum resolution
 -- of one hour — this will be the minimum step for the default settings,
@@ -60,3 +63,11 @@ scaleTimeInterval x (TimeInterval months hours) = TimeInterval
 
 secondsInHour :: Int
 secondsInHour = 60 * 60
+
+showTimeInterval :: TimeInterval -> Text
+showTimeInterval (TimeInterval months hours) = mconcat
+  [ T.pack $ show months
+  , " months"
+  , T.pack $ show hours
+  , " hours"
+  ]

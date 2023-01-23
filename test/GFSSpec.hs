@@ -2,7 +2,10 @@ module GFSSpec where
 
 import GFS
 
-import Data.List ((\\), foldl')
+import Control.Monad
+import Control.Monad.Logger
+import Data.Functor.Identity
+import Data.List ((\\))
 import Data.Time.Calendar
 import Data.Time.Clock
 import Data.Time.LocalTime
@@ -83,7 +86,7 @@ spec =
               , "2023-11-19 21:47:00"
               ]
 
-        gfsRemove ranges now times `shouldBe` expectedRemoved
+        runNoLoggingT (gfsRemove ranges now times) `shouldBe` Identity expectedRemoved
 
     it "shifting now by month keeps \"most\" of old data (example)" $ do
       -- I think it's more obvious for a human to see what's left, not what's removed,
@@ -107,23 +110,25 @@ spec =
             , "2023-12-31 23:59:59"
             ]
 
-          leftAfterNow = gfsLeft ranges now times
-
-      gfsLeft ranges shiftedNowByMonth leftAfterNow `shouldBe` expectedLeft
+      leftAfterNow <- runNoLoggingT $ gfsLeft ranges now times
+      leftAfterMonth <- runNoLoggingT $ gfsLeft ranges shiftedNowByMonth leftAfterNow
+      leftAfterMonth `shouldBe` expectedLeft
 
     it "shifting now day-by-day for a month is the same as shifting now by month (example)" $ do
       let shiftedNowByMonth = addTimeInterval month now
 
-          leftAfterMonth = gfsLeft ranges shiftedNowByMonth times
+      leftAfterMonth <- runNoLoggingT $ gfsLeft ranges shiftedNowByMonth times
 
-          numDays = diffDays (localDay shiftedNowByMonth) (localDay now)
+      let numDays = diffDays (localDay shiftedNowByMonth) (localDay now)
           -- note: the range starts with `0`, not `1`, so that the kept times match those from
           -- `leftAfterMonth`; otherwise, `2022-12-19 22:00:00` is missing from `leftAfterDays`;
           -- this change seems correct in this case, but may not be correct for all cases
           shiftedNowsByDays = (flip addLocalTime now) . (* nominalDay) . realToFrac <$> [0..numDays]
-          leftAfterDays = foldl' (\newTimes newNow -> gfsLeft ranges newNow newTimes) times shiftedNowsByDays
+      leftAfterDays <- runNoLoggingT $ foldM (\newTimes newNow -> gfsLeft ranges newNow newTimes) times shiftedNowsByDays
 
       leftAfterDays `shouldBe` leftAfterMonth
 
-gfsLeft :: GFSRanges -> Now -> TimeList -> TimeList
-gfsLeft ranges now times = mkTimeList $ unTimeList times \\ unTimeList (gfsRemove ranges now times)
+gfsLeft :: MonadLogger m => GFSRanges -> Now -> TimeList -> m TimeList
+gfsLeft ranges now times = do
+  removed <- gfsRemove ranges now times
+  pure . mkTimeList $ unTimeList times \\ unTimeList removed
