@@ -31,6 +31,7 @@ library
       GFS.Internal.GFSRange
       GFS.Internal.TimeInterval
       GFS.Internal.TimeList
+      InputParser
   other-modules:
       Paths_tscleaner
   hs-source-dirs:
@@ -73,6 +74,7 @@ test-suite tscleaner-test
       GFS.Internal.TimeIntervalSpec
       GFS.Internal.TimeListSpec
       GFSSpec
+      InputParserSpec
       Paths_tscleaner
   hs-source-dirs:
       test
