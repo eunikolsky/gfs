@@ -9,7 +9,7 @@ import Data.Time.Format
 import Data.Time.LocalTime
 import qualified Data.Text as T
 
-data Error = InvalidTime Text
+newtype Error = InvalidTime Text
   deriving (Eq, Show)
 
 parseTimes :: Text -> [Text] -> Either Error [LocalTime]
