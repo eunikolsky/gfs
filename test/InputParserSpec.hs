@@ -48,6 +48,13 @@ spec = do
     it "returns an error for an empty string" $ do
       parseTimes format [""] `shouldBe` Left (InvalidTime "")
 
+    it "returns the first encountered error" $ do
+      parseTimes format
+        [ "2023-07-13_12_31_49"
+        , "foobar"
+        , ""
+        ] `shouldBe` Left (InvalidTime "foobar")
+
 createTime :: (Int, Int, Int, Int, Int, Int) -> LocalTime
 createTime (y, m, d, h, mi, s) = LocalTime
   { localDay = fromGregorian (fromIntegral y) m d
