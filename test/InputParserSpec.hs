@@ -30,6 +30,21 @@ spec = do
     it "returns empty list for empty input" $
       parseTimes format [] `shouldBe` []
 
+    it "accepts non-format words in format" $ do
+      let actual = parseTimes "computer_name %Y%m%d-%H%M%S.ext"
+            [ "computer_name 19991231-000000.ext"
+            , "computer_name 20230713-123149.ext"
+            , "computer_name 20000101-235959.ext"
+            ]
+
+          expected = fmap createTime
+            [ (1999, 12, 31, 00, 00, 00)
+            , (2023, 07, 13, 12, 31, 49)
+            , (2000, 01, 01, 23, 59, 59)
+            ]
+
+      actual `shouldBe` expected
+
 createTime :: (Int, Int, Int, Int, Int, Int) -> LocalTime
 createTime (y, m, d, h, mi, s) = LocalTime
   { localDay = fromGregorian (fromIntegral y) m d
