@@ -25,10 +25,10 @@ spec = do
             , (2000, 01, 01, 23, 59, 59)
             ]
 
-      actual `shouldBe` expected
+      actual `shouldBe` Right expected
 
     it "returns empty list for empty input" $
-      parseTimes format [] `shouldBe` []
+      parseTimes format [] `shouldBe` Right []
 
     it "accepts non-format words in format" $ do
       let actual = parseTimes "computer_name %Y%m%d-%H%M%S.ext"
@@ -43,7 +43,10 @@ spec = do
             , (2000, 01, 01, 23, 59, 59)
             ]
 
-      actual `shouldBe` expected
+      actual `shouldBe` Right expected
+
+    it "returns an error for an empty string" $ do
+      parseTimes format [""] `shouldBe` Left (InvalidTime "")
 
 createTime :: (Int, Int, Int, Int, Int, Int) -> LocalTime
 createTime (y, m, d, h, mi, s) = LocalTime
