@@ -5,6 +5,7 @@ module GFS
   , GFSRange(..)
   , GFSRanges
   , Now
+  , TimeInterval
   , TimeList
   , addTimeInterval
   , mkGFSRanges

@@ -25,6 +25,7 @@ source-repository head
 
 library
   exposed-modules:
+      Config
       GFS
       GFS.Internal.Checkpoints
       GFS.Internal.GFS
