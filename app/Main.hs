@@ -7,11 +7,11 @@ import OptParse (configParser)
 
 import Control.Monad (forM_)
 import Control.Monad.IO.Class (liftIO)
-import Control.Monad.Logger (LogLevel(..), filterLogger, runStderrLoggingT)
+import Control.Monad.Logger (LogLevel(..), filterLogger, logErrorN, runStderrLoggingT)
 import Data.Time.LocalTime (LocalTime(..), getZonedTime, timeOfDayToTime, timeToTimeOfDay, zonedTimeToLocalTime)
 import Options.Applicative ((<**>), execParser, fullDesc, helper, info, progDesc)
-import System.Exit (die)
-import qualified Data.Text as T (lines)
+import System.Exit (exitFailure)
+import qualified Data.Text as T (lines, pack)
 import qualified Data.Text.IO as TIO (getContents)
 
 main :: IO ()
@@ -32,7 +32,9 @@ printRemoveTimes config = runLogging $ do
       now <- liftIO getLocalTime
       removeTimes <- unTimeList <$> gfsRemove (cfgGFSRanges config) now inputTimes
       liftIO $ forM_ removeTimes print -- FIXME print the input type
-    Left (InvalidTime time) -> liftIO . die $ mconcat ["Couldn't parse time from string '", show time, "'"]
+    Left (InvalidTime time) -> do
+      logErrorN $ mconcat ["Couldn't parse time from string '", T.pack $ show time, "'"]
+      liftIO exitFailure
 
   where
     runLogging = runStderrLoggingT . filterLoggerForVerbose
