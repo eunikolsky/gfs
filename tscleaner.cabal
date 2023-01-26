@@ -52,6 +52,7 @@ library
 executable tscleaner-exe
   main-is: Main.hs
   other-modules:
+      OptParse
       Paths_tscleaner
   hs-source-dirs:
       app
@@ -62,6 +63,9 @@ executable tscleaner-exe
   build-depends:
       base >=4.7 && <5
     , monad-logger
+    , optparse-applicative
+    , text
+    , time
     , tscleaner
   default-language: Haskell2010
 
@@ -92,6 +96,7 @@ test-suite tscleaner-test
     , monad-logger
     , monad-loops
     , mtl
+    , text
     , time
     , tscleaner
   default-language: Haskell2010

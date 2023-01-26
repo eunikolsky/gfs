@@ -22,6 +22,8 @@ description:         Please see the README on GitHub at <https://github.com/gith
 dependencies:
 - base >= 4.7 && < 5
 - monad-logger
+- text
+- time
 
 ghc-options:
   - -Wall
@@ -41,8 +43,6 @@ library:
   source-dirs: src
   dependencies:
     - mtl
-    - text
-    - time
 
 executables:
   tscleaner-exe:
@@ -54,6 +54,7 @@ executables:
     - -with-rtsopts=-N
     dependencies:
     - tscleaner
+    - optparse-applicative
 
 tests:
   tscleaner-test:
@@ -71,4 +72,3 @@ tests:
     - hspec-discover
     - monad-loops
     - mtl
-    - time
