@@ -42,4 +42,10 @@ gfsRemove ranges now times = do
 -- value and generate the instance automatically; now every such `show'` has to have
 -- a distinct name
 showRange :: GFSRange -> Text
-showRange (GFSRange step limit) = mconcat ["GFSRange{ ", showTimeInterval step, showTimeInterval limit, " }"]
+showRange (GFSRange step limit) = mconcat
+  [ "GFSRange("
+  , showTimeInterval step
+  , "; "
+  , showTimeInterval limit
+  , ")"
+  ]

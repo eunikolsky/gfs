@@ -67,7 +67,7 @@ secondsInHour = 60 * 60
 showTimeInterval :: TimeInterval -> Text
 showTimeInterval (TimeInterval months hours) = mconcat
   [ T.pack $ show months
-  , " months"
+  , " months, "
   , T.pack $ show hours
   , " hours"
   ]
