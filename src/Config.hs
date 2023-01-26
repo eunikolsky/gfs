@@ -11,6 +11,7 @@ import Prelude hiding (until)
 data Config = Config
   { cfgTimeFormat :: Text
   , cfgGFSRanges :: GFSRanges
+  , cfgVerbose :: Bool
   }
 
 -- | The default set of ranges for the GFS algorithm, based on TimeMachine's rules.

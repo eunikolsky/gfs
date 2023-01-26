@@ -32,7 +32,7 @@ ghc-options:
   - -Werror=incomplete-patterns
   - -Werror=incomplete-uni-patterns
   - -Wredundant-constraints
-  - -Wmissing-fields
+  - -Werror=missing-fields
   - -Wmissing-methods
 
 default-extensions:
