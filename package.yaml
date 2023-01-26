@@ -38,6 +38,7 @@ ghc-options:
 default-extensions:
   - NumericUnderscores
   - OverloadedStrings
+  - TypeApplications
 
 library:
   source-dirs: src

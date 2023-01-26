@@ -8,7 +8,7 @@ import OptParse (configParser)
 import Control.Monad (forM_)
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Logger (runStderrLoggingT)
-import Data.Time.LocalTime (LocalTime, getZonedTime, zonedTimeToLocalTime)
+import Data.Time.LocalTime (LocalTime(..), getZonedTime, timeOfDayToTime, timeToTimeOfDay, zonedTimeToLocalTime)
 import Options.Applicative ((<**>), execParser, fullDesc, helper, info, progDesc)
 import System.Exit (die)
 import qualified Data.Text as T (lines)
@@ -34,4 +34,8 @@ printRemoveTimes config = runStderrLoggingT $ do
     Left (InvalidTime time) -> liftIO . die $ mconcat ["Couldn't parse time from string '", show time, "'"]
 
 getLocalTime :: IO LocalTime
-getLocalTime = zonedTimeToLocalTime <$> getZonedTime
+getLocalTime = roundToSeconds . zonedTimeToLocalTime <$> getZonedTime
+  where
+    roundToSeconds = modifyTimeOfDay $ realToFrac @Int . floor
+    modifyTimeOfDay f t@(LocalTime _ tod) = t
+      { localTimeOfDay = timeToTimeOfDay . f . timeOfDayToTime $ tod }
