@@ -1,5 +1,6 @@
 module InputParserSpec where
 
+import GFS (TimeItem(..))
 import InputParser
 
 import Data.Maybe
@@ -25,7 +26,7 @@ spec = do
             , (2000, 01, 01, 23, 59, 59)
             ]
 
-      actual `shouldBe` Right expected
+      fmap (fmap itTime) actual `shouldBe` Right expected
 
     it "returns empty list for empty input" $
       parseTimes format [] `shouldBe` Right []
@@ -43,7 +44,19 @@ spec = do
             , (2000, 01, 01, 23, 59, 59)
             ]
 
-      actual `shouldBe` Right expected
+      fmap (fmap itTime) actual `shouldBe` Right expected
+
+    it "stores the original string in the item" $ do
+      let strings =
+            [ "computer_name 19991231-000000.ext"
+            , "computer_name 20230713-123149.ext"
+            , "computer_name 20000101-235959.ext"
+            ]
+          actual = parseTimes "computer_name %Y%m%d-%H%M%S.ext" strings
+
+          expected = strings
+
+      fmap (fmap itStr) actual `shouldBe` Right expected
 
     it "returns an error for an empty string" $ do
       parseTimes format [""] `shouldBe` Left (InvalidTime "")

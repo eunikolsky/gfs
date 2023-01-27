@@ -39,29 +39,29 @@ spec = do
         property $ \(ALocalTime now) -> do
           -- all times are older than 1 hour
           -- TODO extract the generator?
-          times <- mkTimeList . fmap (flip addLocalTime now . negate . (+ offset) . fromInteger) <$> listOf (chooseInteger (1, 9000))
+          times <- mkTimeList . fmap (TimeItem "" . flip addLocalTime now . negate . (+ offset) . fromInteger) <$> listOf (chooseInteger (1, 9000))
           let checkpoints = mkCheckpoints (subLocalTime now offset) [now]
               cleaned = gfsRemove checkpoints times
           pure . counterexample ("times: " <> show times <> "\ncleaned: " <> show cleaned) $ cleaned == times
 
       it "returns nothing for one time newer than 1 hour" $
         property $ \(ALocalTime now) -> do
-          oneTime <- mkTimeList . singleton . flip addLocalTime now . negate . fromInteger <$> chooseInteger (1, offset' - 1)
+          oneTime <- mkTimeList . singleton . TimeItem "" . flip addLocalTime now . negate . fromInteger <$> chooseInteger (1, offset' - 1)
           let checkpoints = mkCheckpoints (subLocalTime now offset) [now]
           pure . counterexample ("oneTime: " <> show oneTime) $ gfsRemove checkpoints oneTime == mkTimeList []
 
       it "returns nothing for (keeps) time exactly 1 hour older" $
         property $ \(ALocalTime now) ->
-          let oneTime = mkTimeList . singleton $ addLocalTime (negate offset) now
+          let oneTime = mkTimeList . singleton . TimeItem "" $ addLocalTime (negate offset) now
               checkpoints = mkCheckpoints (subLocalTime now offset) [now]
           in gfsRemove checkpoints oneTime == mkTimeList []
 
       it "returns all times except oldest" $
         property $ \(ALocalTime now) -> do
           oldestTimeOffset <- chooseInteger (offset' `div` 2, offset' - 1)
-          let oldestTime = addLocalTime (negate . fromInteger $ oldestTimeOffset) now
+          let oldestTime = TimeItem "" $ addLocalTime (negate . fromInteger $ oldestTimeOffset) now
           -- TODO is it possible to encapsulate and hide the offset subtractions so that they are always positive in the properties?
-          times <- fmap (flip addLocalTime now . negate . fromInteger) <$> listOf (chooseInteger (1, oldestTimeOffset))
+          times <- fmap (TimeItem "" . flip addLocalTime now . negate . fromInteger) <$> listOf (chooseInteger (1, oldestTimeOffset))
           let inputTimes = mkTimeList $ oldestTime : times
               checkpoints = mkCheckpoints (subLocalTime now offset) [now]
               cleaned = gfsRemove checkpoints inputTimes
@@ -123,19 +123,19 @@ chooseCheckpoints now = do
 chooseTimesAfterNow :: LocalTime -> Gen TimeList
 chooseTimesAfterNow now = do
   offsets <- listOf $ fromInteger <$> chooseInteger (1, 9000)
-  pure . mkTimeList $ (`addLocalTime` now) <$> offsets
+  pure . mkTimeList $ TimeItem "" . (`addLocalTime` now) <$> offsets
 
 chooseTimesOlderThan :: LocalTime -> Gen TimeList
 chooseTimesOlderThan t = do
   offsets <- listOf $ fromInteger <$> chooseInteger (1, 9000)
-  pure . mkTimeList $ subLocalTime t <$> offsets
+  pure . mkTimeList $ TimeItem "" . subLocalTime t <$> offsets
 
 chooseSingleTimeInEachRange :: [(LocalTime, LocalTime)] -> Gen TimeList
 chooseSingleTimeInEachRange ranges = fmap mkTimeList $
   forM ranges $ \(from, to) -> do
     let diff = to `diffLocalTime` from
     fromOffset <- fromInteger <$> chooseInteger (0, floor diff - 1)
-    pure $ addLocalTime fromOffset from
+    pure . TimeItem "" $ addLocalTime fromOffset from
 
 chooseTimesInEachRange :: [(LocalTime, LocalTime)] -> Gen (TimeList, TimeList)
 chooseTimesInEachRange ranges = fmap combineTimes .
@@ -148,10 +148,11 @@ chooseTimesInEachRange ranges = fmap combineTimes .
   where
     dropOldest = drop 1
     combineTimes :: [([LocalTime], [LocalTime])] -> (TimeList, TimeList)
-    combineTimes = bimap mkTimeList mkTimeList . foldl' (\(acctimes, acctimes') (times, times') -> (acctimes ++ times, acctimes' ++ times')) ([], [])
+    combineTimes = bimap mkTimeList' mkTimeList' . foldl' (\(acctimes, acctimes') (times, times') -> (acctimes ++ times, acctimes' ++ times')) ([], [])
+    mkTimeList' = mkTimeList . fmap (TimeItem "")
 
 timeListFromCheckpoints :: Checkpoints -> TimeList
-timeListFromCheckpoints = mkTimeList . NE.toList . unCheckpoints
+timeListFromCheckpoints = mkTimeList . NE.toList . fmap (TimeItem "") . unCheckpoints
 
 subLocalTime :: LocalTime -> NominalDiffTime -> LocalTime
 subLocalTime t = flip addLocalTime t . negate

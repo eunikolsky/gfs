@@ -21,6 +21,6 @@ spec = do
 
 chooseTimeList :: Gen (TimeList, TimeList)
 chooseTimeList = do
-  times <- fmap sort . listOf1 $ unALocalTime <$> arbitrary
+  times <- fmap (fmap (TimeItem "") . sort) . listOf1 $ unALocalTime <$> arbitrary
   let withoutNewest = reverse . tail . reverse $ times
   pure (mkTimeList times, mkTimeList withoutNewest)

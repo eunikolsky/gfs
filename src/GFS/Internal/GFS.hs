@@ -6,6 +6,7 @@ import GFS.Internal.Checkpoints
 import GFS.Internal.TimeList
 
 import Data.List.NonEmpty ((<|), NonEmpty(..))
+import Data.Time.LocalTime
 import qualified Data.List.NonEmpty as NE
 
 gfsRemove :: Checkpoints -> TimeList -> TimeList
@@ -18,10 +19,10 @@ gfsRemove checkpoints times =
       -- list — is it possible to explain this to the type system?
   in mkTimeList $ tooOld ++ concatMap keepOldest timesBetweenCheckpoints
 
-splitAtCheckpoints :: Ord a => [a] -> NonEmpty a -> NonEmpty [a]
+splitAtCheckpoints :: [TimeItem] -> NonEmpty LocalTime -> NonEmpty [TimeItem]
 splitAtCheckpoints xs checkpoints =
   let (checkpoint, maybeOtherCheckpoints) = NE.uncons checkpoints
-      (beforeCheckpoint, rest) = span (< checkpoint) xs
+      (beforeCheckpoint, rest) = span ((< checkpoint) . itTime) xs
   in beforeCheckpoint <|
     {- note: the last block of times (times after the last checkpoint, "now") is
      - ignored (`rest` is unused) and never returned to `gfsRemove`, thus the times

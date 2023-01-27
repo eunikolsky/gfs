@@ -1,20 +1,31 @@
 module GFS.Internal.TimeList
-  ( TimeList
+  ( TimeItem(..)
+  , TimeList
   , mkTimeList
   , keepNewestTime
   , unTimeList
   ) where
 
-import Data.List (sort)
+import Data.List (sortOn)
+import Data.Text (Text)
 import Data.Time.LocalTime
 
--- | Sorted (oldest to newest) list of `LocalTime` values.
-newtype TimeList = TimeList { unTimeList :: [LocalTime] }
+-- | A single item provided by the user, consisting of the original string and
+-- the time parsed from it. The original string is needed in order to print it
+-- as is for GFS-removed times.
+data TimeItem = TimeItem
+  { itStr :: Text
+  , itTime :: LocalTime
+  }
+  deriving (Eq, Show)
+
+-- | Sorted (oldest to newest) list of `TimeItem` values.
+newtype TimeList = TimeList { unTimeList :: [TimeItem] }
   deriving (Eq, Show)
 
 -- | Smart constructor for `TimeList` — sorts the input list if necessary.
-mkTimeList :: [LocalTime] -> TimeList
-mkTimeList = TimeList . sort
+mkTimeList :: [TimeItem] -> TimeList
+mkTimeList = TimeList . sortOn itTime
 
 keepNewestTime :: TimeList -> TimeList
 keepNewestTime times = case times of

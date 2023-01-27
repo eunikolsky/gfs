@@ -25,7 +25,7 @@ spec =
         -- see the expected checkpoints in a test in `GFS.Internal.GFSRangeSpec`
         ranges = mkGFSRanges hourly [daily, monthly]
 
-        times = mkTimeList $ fmap read
+        times = mkTimeList $ fmap ((TimeItem "") . read)
           -- too old
           [ "2020-01-01 03:00:23", "2022-11-19 00:00:00"
 
@@ -64,7 +64,7 @@ spec =
         -- created from `times` by keeping all in "too old", removing the first
         -- time on every line after that, removing the newest time before now,
         -- and removing all "newer than now"
-        let expectedRemoved = mkTimeList $ fmap read
+        let expectedRemoved = mkTimeList $ fmap ((TimeItem "") . read)
               -- too old
               [ "2020-01-01 03:00:23", "2022-11-19 00:00:00"
 
@@ -92,7 +92,7 @@ spec =
       -- I think it's more obvious for a human to see what's left, not what's removed,
       -- after two cleanups in this test
       let shiftedNowByMonth = addTimeInterval month now -- "2023-12-19 22:00:00"
-          expectedLeft = mkTimeList $ fmap read
+          expectedLeft = mkTimeList $ fmap ((TimeItem "") . read)
             -- monthly [2022-12-19 22:00:00; 2023-11-19 22:00:00):
             [ "2022-12-19 22:00:00"
             , "2023-09-18 20:33:01"

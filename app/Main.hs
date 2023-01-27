@@ -1,7 +1,7 @@
 module Main where
 
 import Config (Config(..))
-import GFS (gfsRemove, mkTimeList, unTimeList)
+import GFS (TimeItem(itStr), gfsRemove, mkTimeList, unTimeList)
 import InputParser (Error(..), parseTimes)
 import OptParse (configParser)
 
@@ -13,7 +13,7 @@ import Data.Time.LocalTime (LocalTime(..), getZonedTime, timeOfDayToTime, timeTo
 import Options.Applicative ((<**>), execParser, fullDesc, helper, info, progDesc)
 import System.Exit (exitFailure)
 import qualified Data.Text as T (lines, pack)
-import qualified Data.Text.IO as TIO (getContents)
+import qualified Data.Text.IO as TIO (getContents, putStrLn)
 
 main :: IO ()
 main = parseOptions >>= printRemoveTimes
@@ -30,7 +30,8 @@ printRemoveTimes config = runLogging . (>>= logError) . runExceptT $ do
   inputTimes <- fmap mkTimeList . ExceptT . pure $ parseTimes (cfgTimeFormat config) inputStrings
   now <- liftIO getLocalTime
   removeTimes <- unTimeList <$> gfsRemove (cfgGFSRanges config) now inputTimes
-  liftIO $ forM_ removeTimes print -- FIXME print the input type
+  let removeItems = itStr <$> removeTimes
+  liftIO $ forM_ removeItems TIO.putStrLn
 
   where
     logError (Left (InvalidTime time)) = do
