@@ -25,14 +25,12 @@ parseOptions = execParser $ info (configParser <**> helper)
   )
 
 printRemoveTimes :: Config -> IO ()
-printRemoveTimes config = runLogging $ do
-  result <- runExceptT $ do
-    inputStrings <- liftIO $ T.lines <$> TIO.getContents
-    inputTimes <- fmap mkTimeList . ExceptT . pure $ parseTimes (cfgTimeFormat config) inputStrings
-    now <- liftIO getLocalTime
-    removeTimes <- unTimeList <$> gfsRemove (cfgGFSRanges config) now inputTimes
-    liftIO $ forM_ removeTimes print -- FIXME print the input type
-  logError result
+printRemoveTimes config = runLogging . (>>= logError) . runExceptT $ do
+  inputStrings <- liftIO $ T.lines <$> TIO.getContents
+  inputTimes <- fmap mkTimeList . ExceptT . pure $ parseTimes (cfgTimeFormat config) inputStrings
+  now <- liftIO getLocalTime
+  removeTimes <- unTimeList <$> gfsRemove (cfgGFSRanges config) now inputTimes
+  liftIO $ forM_ removeTimes print -- FIXME print the input type
 
   where
     logError (Left (InvalidTime time)) = do
