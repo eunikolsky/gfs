@@ -55,6 +55,7 @@ executables:
     - -with-rtsopts=-N
     dependencies:
     - tscleaner
+    - mtl
     - optparse-applicative
 
 tests:

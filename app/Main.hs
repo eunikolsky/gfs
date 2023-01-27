@@ -6,6 +6,7 @@ import InputParser (Error(..), parseTimes)
 import OptParse (configParser)
 
 import Control.Monad (forM_)
+import Control.Monad.Except (ExceptT(..), runExceptT)
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Logger (LogLevel(..), filterLogger, logErrorN, runStderrLoggingT)
 import Data.Time.LocalTime (LocalTime(..), getZonedTime, timeOfDayToTime, timeToTimeOfDay, zonedTimeToLocalTime)
@@ -25,18 +26,22 @@ parseOptions = execParser $ info (configParser <**> helper)
 
 printRemoveTimes :: Config -> IO ()
 printRemoveTimes config = runLogging $ do
-  inputStrings <- liftIO $ T.lines <$> TIO.getContents
-  -- FIXME clean this up with `ExceptT IO`
-  case mkTimeList <$> parseTimes (cfgTimeFormat config) inputStrings of
-    Right inputTimes -> do
-      now <- liftIO getLocalTime
-      removeTimes <- unTimeList <$> gfsRemove (cfgGFSRanges config) now inputTimes
-      liftIO $ forM_ removeTimes print -- FIXME print the input type
-    Left (InvalidTime time) -> do
-      logErrorN $ mconcat ["Couldn't parse time from string '", T.pack $ show time, "'"]
-      liftIO exitFailure
+  result <- runExceptT $ do
+    inputStrings <- liftIO $ T.lines <$> TIO.getContents
+    inputTimes <- fmap mkTimeList . ExceptT . pure $ parseTimes (cfgTimeFormat config) inputStrings
+    now <- liftIO getLocalTime
+    removeTimes <- unTimeList <$> gfsRemove (cfgGFSRanges config) now inputTimes
+    liftIO $ forM_ removeTimes print -- FIXME print the input type
+  logError result
 
   where
+    logError (Left (InvalidTime time)) = do
+      logErrorN $ mconcat ["Couldn't parse time from string '", T.pack $ show time, "'"]
+      -- it's interesting that the error log in the function is still printed even though
+      -- `exitFailure` terminates the program here
+      liftIO exitFailure
+    logError (Right ()) = pure ()
+
     runLogging = runStderrLoggingT . filterLoggerForVerbose
     filterLoggerForVerbose = if cfgVerbose config then passAllLogs else passInfoAndHigher
     passAllLogs = id -- everything is logged by default

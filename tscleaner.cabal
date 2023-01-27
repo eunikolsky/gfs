@@ -65,6 +65,7 @@ executable tscleaner-exe
   build-depends:
       base >=4.7 && <5
     , monad-logger
+    , mtl
     , optparse-applicative
     , text
     , time
