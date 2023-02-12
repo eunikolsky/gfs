@@ -62,6 +62,8 @@ Note that the program uses calendar-based calculations for month differences cli
 
 The program is inspired by [`tarsnapper`](https://github.com/miracle2k/tarsnapper). The difference is `tarsnapper` works only with `tarsnap` and it has other functionality in addition to expiring backups.
 
+There is more background information about the project in my article at <https://egeek.me/2023/02/12/the-gfs-program/>.
+
 ## Examples
 
 ### `tarsnap`
