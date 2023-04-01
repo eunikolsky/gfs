@@ -5,11 +5,11 @@ import InputParser
 
 import Data.Maybe
 import Data.Text qualified as T
-import Data.Time.Calendar
-import Data.Time.LocalTime
+import Data.Time
 import Test.Hspec
 import Test.Hspec.QuickCheck
 import Test.QuickCheck
+import Test.QuickCheck.Instances.Time ()
 
 spec :: Spec
 spec = do
@@ -71,10 +71,28 @@ spec = do
         , ""
         ] `shouldBe` Left (InvalidTime "foobar")
 
-    prop "skips leading chars until it can parse times" $ \(UnicodeString prefix) -> do
-      let actual = parseTimes format [T.pack prefix <> "1999-12-31_00_00_00"]
-          expected = [createTime (1999, 12, 31, 00, 00, 00)]
-      fmap itTime <$> actual `shouldBe` Right expected
+    prop "skips leading chars until it can parse times" $
+      \(UnicodeString prefix) (LocalTimeWithIntSeconds localTime) -> do
+        let s = T.pack $ prefix <> formatTime defaultTimeLocale (T.unpack format) localTime
+            actual = parseTimes format [s]
+            expected = [localTime]
+        fmap itTime <$> actual `shouldBe` Right expected
+
+-- | `LocalTime` with integer seconds because the default `format` in tests
+-- doesn't parse milliseconds (should it?).
+newtype LocalTimeWithIntSeconds = LocalTimeWithIntSeconds LocalTime
+  deriving Show
+
+mkLocalTimeWithIntSeconds :: LocalTime -> LocalTimeWithIntSeconds
+mkLocalTimeWithIntSeconds t@(LocalTime { localTimeOfDay }) =
+    LocalTimeWithIntSeconds $ t { localTimeOfDay = intSecTimeOfDay localTimeOfDay }
+
+intSecTimeOfDay :: TimeOfDay -> TimeOfDay
+intSecTimeOfDay t@(TimeOfDay { todSec }) = t { todSec = fromIntegral @Int $ floor todSec }
+
+instance Arbitrary LocalTimeWithIntSeconds where
+  arbitrary = mkLocalTimeWithIntSeconds <$> arbitrary
+  shrink (LocalTimeWithIntSeconds t) = mkLocalTimeWithIntSeconds <$> shrink t
 
 createTime :: (Int, Int, Int, Int, Int, Int) -> LocalTime
 createTime (y, m, d, h, mi, s) = LocalTime

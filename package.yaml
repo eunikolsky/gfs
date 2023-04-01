@@ -37,6 +37,7 @@ ghc-options:
 
 default-extensions:
   - ImportQualifiedPost
+  - NamedFieldPuns
   - NumericUnderscores
   - OverloadedStrings
   - TypeApplications
@@ -75,3 +76,4 @@ tests:
     - hspec-discover
     - monad-loops
     - mtl
+    - quickcheck-instances
