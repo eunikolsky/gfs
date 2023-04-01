@@ -80,6 +80,14 @@ spec = parallel $ do
           expected = getLocalTimeWithIntSeconds . snd <$> pairs
       fmap itTime <$> actual `shouldBe` Right expected
 
+    prop "skips trailing chars until it can parse times" $ \(NonEmpty pairs) -> do
+      let strings = (\(UnicodeString suffix, LocalTimeWithIntSeconds localTime) -> T.pack $
+            formatTime defaultTimeLocale (T.unpack format) localTime <> suffix)
+            <$> pairs
+          actual = parseTimes format strings
+          expected = getLocalTimeWithIntSeconds . snd <$> pairs
+      fmap itTime <$> actual `shouldBe` Right expected
+
 -- | A unicode string that can't end with a digit. Found because the
 -- "skips leading chars until it can parse times" property discovered this
 -- failing case with seed `401874497`:
