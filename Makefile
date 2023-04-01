@@ -20,7 +20,7 @@ testd:
 # both variables are optional
 .PHONY:
 testd-ext:
-	@ghcid --command "stack ghci $(MAIN_TEST_TARGET) --ghci-options=-fobject-code" --test ":main $${MATCH:+--match \"$${MATCH}\"} $${SEED:+--seed $${SEED}}"
+	@ghcid --command "stack ghci --test --main-is $(MAIN_TEST_TARGET) --ghci-options=-fobject-code" --test ":main $${MATCH:+--match \"$${MATCH}\"} $${SEED:+--seed $${SEED}}"
 
 .PHONY:
 testfw:
