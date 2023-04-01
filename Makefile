@@ -4,4 +4,4 @@ ghcid:
 
 .PHONY:
 ghcid-test:
-	@ghcid -c 'stack ghci tscleaner:lib tscleaner:test:tscleaner-test --ghci-options=-fobject-code' -T main
+	@ghcid -c 'stack ghci gfs:lib gfs:test:gfs-test --ghci-options=-fobject-code' -T main
