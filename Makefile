@@ -25,6 +25,11 @@ testd-match:
 testfw:
 	@stack test --fast --file-watch $(MAIN_TEST_TARGET)
 
+# run like this: `m testfw-seed SEED=401874497`
+.PHONY:
+testd-seed:
+	@ghcid --command "stack ghci $(MAIN_TEST_TARGET) --ghci-options=-fobject-code" --test ":main --seed $${SEED}"
+
 .PHONY:
 buildd:
 	@ghcid -c 'stack ghci'

@@ -3,6 +3,7 @@ module InputParserSpec where
 import GFS (TimeItem(..))
 import InputParser
 
+import Data.Char
 import Data.Maybe
 import Data.Text qualified as T
 import Data.Time
@@ -12,7 +13,7 @@ import Test.QuickCheck
 import Test.QuickCheck.Instances.Time ()
 
 spec :: Spec
-spec = do
+spec = parallel $ do
   describe "parseTimes" $ do
     let format = "%Y-%m-%d_%H_%M_%S"
 
@@ -72,12 +73,38 @@ spec = do
         ] `shouldBe` Left (InvalidTime "foobar")
 
     prop "skips leading chars until it can parse times" $ \(NonEmpty pairs) -> do
-      let strings = (\(UnicodeString prefix, LocalTimeWithIntSeconds localTime) -> T.pack $
-            prefix <> formatTime defaultTimeLocale (T.unpack format) localTime)
+      let strings = (\(prefix, LocalTimeWithIntSeconds localTime) -> T.pack $
+            getSkippablePrefix prefix <> formatTime defaultTimeLocale (T.unpack format) localTime)
             <$> pairs
           actual = parseTimes format strings
           expected = getLocalTimeWithIntSeconds . snd <$> pairs
       fmap itTime <$> actual `shouldBe` Right expected
+
+-- | A unicode string that can't end with a digit. Found because the
+-- "skips leading chars until it can parse times" property discovered this
+-- failing case with seed `401874497`:
+--
+--   Falsifiable (after 78 tests and 17 shrinks):
+--     NonEmpty {getNonEmpty = [(UnicodeString {getUnicodeString = "1"},LocalTimeWithIntSeconds {getLocalTimeWithIntSeconds = 1858-11-17 00:00:00})]}
+--   expected: Right [1858-11-17 00:00:00]
+--    but got: Right [11858-11-17 00:00:00]
+--
+-- If we accept a prefix ending with a digit, then there is no general easy way
+-- to distinguish year `11858` from `1858`. We could limit a year to 4 digits…
+newtype SkippablePrefix = SkippablePrefix { getSkippablePrefix :: String }
+  deriving newtype Show
+
+mkSkippablePrefix :: String -> SkippablePrefix
+mkSkippablePrefix s =
+  let maybeLastCharIsDigit = fmap isDigit . listToMaybe $ reverse s
+  in if fromMaybe False maybeLastCharIsDigit
+      -- it's unexpected that `discard` works in a pure function, outside of `Gen`
+      then discard
+      else SkippablePrefix s
+
+instance Arbitrary SkippablePrefix where
+  arbitrary = mkSkippablePrefix . getUnicodeString <$> arbitrary
+  shrink (SkippablePrefix p) = mkSkippablePrefix <$> shrink p
 
 -- | `LocalTime` with integer seconds because the default `format` in tests
 -- doesn't parse milliseconds (should it?).

@@ -38,6 +38,8 @@ library
   hs-source-dirs:
       src
   default-extensions:
+      DerivingStrategies
+      GeneralizedNewtypeDeriving
       ImportQualifiedPost
       NamedFieldPuns
       NumericUnderscores
@@ -60,6 +62,8 @@ executable gfs
   hs-source-dirs:
       app
   default-extensions:
+      DerivingStrategies
+      GeneralizedNewtypeDeriving
       ImportQualifiedPost
       NamedFieldPuns
       NumericUnderscores
@@ -91,6 +95,8 @@ test-suite gfs-test
   hs-source-dirs:
       test
   default-extensions:
+      DerivingStrategies
+      GeneralizedNewtypeDeriving
       ImportQualifiedPost
       NamedFieldPuns
       NumericUnderscores

@@ -36,6 +36,8 @@ ghc-options:
   - -Wmissing-methods
 
 default-extensions:
+  - DerivingStrategies
+  - GeneralizedNewtypeDeriving
   - ImportQualifiedPost
   - NamedFieldPuns
   - NumericUnderscores
