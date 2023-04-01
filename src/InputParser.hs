@@ -34,14 +34,19 @@ parseTimes format strings = forM strings $ \string ->
 
     -- FIXME optimize this? property-based tests are noticeably slower
     candidates string = do
-      -- TODO no need to go to an empty string
+      -- the time string that a format string parses can't be shorter than the
+      -- format string, so we don't need to suggest shorter strings
+      let minOutputLength = length formatString
+
       -- FIXME this isn't a very functional or safe solution
       dropPrefixN <- [0..length string]
       dropSuffixN <- [0..length string]
       -- instead of the absent `dropLast` function, we'll `take` a smaller
       -- number of characters from the beginning, having the same effect
-      let takeN = length string - (dropPrefixN + dropSuffixN)
-      pure . take takeN $ drop dropPrefixN string
+      let outputLength = length string - (dropPrefixN + dropSuffixN)
+
+      guard $ outputLength > minOutputLength
+      pure . take outputLength $ drop dropPrefixN string
 
     formatString = T.unpack format
 
