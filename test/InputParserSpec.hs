@@ -71,16 +71,17 @@ spec = do
         , ""
         ] `shouldBe` Left (InvalidTime "foobar")
 
-    prop "skips leading chars until it can parse times" $
-      \(UnicodeString prefix) (LocalTimeWithIntSeconds localTime) -> do
-        let s = T.pack $ prefix <> formatTime defaultTimeLocale (T.unpack format) localTime
-            actual = parseTimes format [s]
-            expected = [localTime]
-        fmap itTime <$> actual `shouldBe` Right expected
+    prop "skips leading chars until it can parse times" $ \(NonEmpty pairs) -> do
+      let strings = (\(UnicodeString prefix, LocalTimeWithIntSeconds localTime) -> T.pack $
+            prefix <> formatTime defaultTimeLocale (T.unpack format) localTime)
+            <$> pairs
+          actual = parseTimes format strings
+          expected = getLocalTimeWithIntSeconds . snd <$> pairs
+      fmap itTime <$> actual `shouldBe` Right expected
 
 -- | `LocalTime` with integer seconds because the default `format` in tests
 -- doesn't parse milliseconds (should it?).
-newtype LocalTimeWithIntSeconds = LocalTimeWithIntSeconds LocalTime
+newtype LocalTimeWithIntSeconds = LocalTimeWithIntSeconds { getLocalTimeWithIntSeconds :: LocalTime }
   deriving Show
 
 mkLocalTimeWithIntSeconds :: LocalTime -> LocalTimeWithIntSeconds
