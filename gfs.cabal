@@ -38,6 +38,7 @@ library
   hs-source-dirs:
       src
   default-extensions:
+      ImportQualifiedPost
       NumericUnderscores
       OverloadedStrings
       TypeApplications
@@ -58,6 +59,7 @@ executable gfs
   hs-source-dirs:
       app
   default-extensions:
+      ImportQualifiedPost
       NumericUnderscores
       OverloadedStrings
       TypeApplications
@@ -87,6 +89,7 @@ test-suite gfs-test
   hs-source-dirs:
       test
   default-extensions:
+      ImportQualifiedPost
       NumericUnderscores
       OverloadedStrings
       TypeApplications

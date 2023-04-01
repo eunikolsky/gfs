@@ -36,6 +36,7 @@ ghc-options:
   - -Wmissing-methods
 
 default-extensions:
+  - ImportQualifiedPost
   - NumericUnderscores
   - OverloadedStrings
   - TypeApplications

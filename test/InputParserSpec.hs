@@ -4,9 +4,12 @@ import GFS (TimeItem(..))
 import InputParser
 
 import Data.Maybe
+import Data.Text qualified as T
 import Data.Time.Calendar
 import Data.Time.LocalTime
 import Test.Hspec
+import Test.Hspec.QuickCheck
+import Test.QuickCheck
 
 spec :: Spec
 spec = do
@@ -67,6 +70,11 @@ spec = do
         , "foobar"
         , ""
         ] `shouldBe` Left (InvalidTime "foobar")
+
+    prop "skips leading chars until it can parse times" $ \(UnicodeString prefix) -> do
+      let actual = parseTimes format [T.pack prefix <> "1999-12-31_00_00_00"]
+          expected = [createTime (1999, 12, 31, 00, 00, 00)]
+      fmap itTime <$> actual `shouldBe` Right expected
 
 createTime :: (Int, Int, Int, Int, Int, Int) -> LocalTime
 createTime (y, m, d, h, mi, s) = LocalTime
