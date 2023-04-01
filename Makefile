@@ -13,12 +13,25 @@ check-test:
 	stack --verbosity error test --fast --ta='-f silent' $(MAIN_TEST_TARGET)
 
 .PHONY:
-ghcid:
+testd:
+	@ghcid -c 'HSPEC_FORMAT=failed-examples stack ghci $(MAIN_TEST_TARGET) --ghci-options=-fobject-code' -T main
+
+# use like this: `m testd-match MATCH=InputParser`
+.PHONY:
+testd-match:
+	@ghcid --command "stack ghci --test --main-is $(MAIN_TEST_TARGET) --ghci-options=-fobject-code" --test ":main --match \"$${MATCH}\""
+
+.PHONY:
+testfw:
+	@stack test --fast --file-watch $(MAIN_TEST_TARGET)
+
+.PHONY:
+buildd:
 	@ghcid -c 'stack ghci'
 
 .PHONY:
-ghcid-test:
-	@ghcid -c 'stack ghci $(MAIN_TEST_TARGET) --ghci-options=-fobject-code' -T main
+buildfw:
+	@stack build --fast --file-watch
 
 .PHONY:
 install-precommit-hook:
