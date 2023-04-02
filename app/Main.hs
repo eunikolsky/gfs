@@ -2,7 +2,7 @@ module Main where
 
 import Config (Config(..))
 import GFS (TimeItem(itStr), gfsRemove, mkTimeList, unTimeList)
-import InputParser (Error(..), FormatMatch(..), parseTimes)
+import InputParser (Error(..), parseTimes)
 import OptParse (configParser)
 
 import Control.Monad (forM_)
@@ -27,8 +27,8 @@ parseOptions = execParser $ info (configParser <**> helper)
 printRemoveTimes :: Config -> IO ()
 printRemoveTimes config = runLogging . (>>= logError) . runExceptT $ do
   inputStrings <- liftIO $ T.lines <$> TIO.getContents
-  -- FIXME set the match type based on config
-  inputTimes <- fmap mkTimeList . ExceptT . pure $ parseTimes ExactMatch (cfgTimeFormat config) inputStrings
+  inputTimes <- fmap mkTimeList . ExceptT . pure $
+    parseTimes (cfgFormatMatch config) (cfgTimeFormat config) inputStrings
   now <- liftIO getLocalTime
   removeTimes <- unTimeList <$> gfsRemove (cfgGFSRanges config) now inputTimes
   let removeItems = itStr <$> removeTimes
