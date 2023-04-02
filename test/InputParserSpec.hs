@@ -76,8 +76,25 @@ spec = parallel $ do
           , ""
           ] `shouldBe` Left (InvalidTime "foobar")
 
+      prop "doesn't skip leading chars" $ \(NonEmpty pairs) -> do
+        let strings = (\(NonEmptyUnicodeString prefix, LocalTimeWithIntSeconds localTime) -> T.pack $
+              prefix <> formatTime defaultTimeLocale (T.unpack format) localTime)
+              <$> pairs
+            actual = parseTimes format strings
+            expected = InvalidTime $ head strings
+        fmap itTime <$> actual `shouldBe` Left expected
+
+      prop "doesn't skip trailing chars" $ \(NonEmpty pairs) -> do
+        let strings = (\(NonEmptyUnicodeString suffix, LocalTimeWithIntSeconds localTime) -> T.pack $
+              formatTime defaultTimeLocale (T.unpack format) localTime <> suffix)
+              <$> pairs
+            actual = parseTimes format strings
+            expected = InvalidTime $ head strings
+        fmap itTime <$> actual `shouldBe` Left expected
+
     context "lenient match" $ do
       let parseTimes = InputParser.parseTimes LenientMatch
+
       prop "skips leading chars until it can parse times" $ \(NonEmpty pairs) -> do
         let strings = (\(prefix, LocalTimeWithIntSeconds localTime) -> T.pack $
               getSkippablePrefix prefix <> formatTime defaultTimeLocale (T.unpack format) localTime)
@@ -119,6 +136,18 @@ mkSkippablePrefix s =
 instance Arbitrary SkippablePrefix where
   arbitrary = mkSkippablePrefix . getUnicodeString <$> arbitrary
   shrink (SkippablePrefix p) = mkSkippablePrefix <$> shrink p
+
+newtype NonEmptyUnicodeString = NonEmptyUnicodeString { getNonEmptyUnicodeString :: String }
+  deriving newtype Show
+
+mkNonEmptyUnicodeString :: String -> NonEmptyUnicodeString
+mkNonEmptyUnicodeString s
+  | null s = discard
+  | otherwise = NonEmptyUnicodeString s
+
+instance Arbitrary NonEmptyUnicodeString where
+  arbitrary = mkNonEmptyUnicodeString . getUnicodeString <$> arbitrary
+  shrink = fmap mkNonEmptyUnicodeString . shrink . getNonEmptyUnicodeString
 
 -- | `LocalTime` with integer seconds because the default `format` in tests
 -- doesn't parse milliseconds (should it?).

@@ -26,13 +26,17 @@ data FormatMatch
   -- this is much slower and (mostly) works for input with extra data
 
 parseTimes :: FormatMatch -> Text -> [Text] -> Either Error [TimeItem]
-parseTimes _ format strings = forM strings $ \string ->
+parseTimes match format strings = forM strings $ \string ->
   maybe (Left $ InvalidTime string) (Right . TimeItem string)
-    . firstJust
-    . possiblyParsedTimes
+    . parseFunc
     $ T.unpack string
 
   where
+    parseFunc :: String -> Maybe Time.LocalTime
+    parseFunc = case match of
+      ExactMatch -> parseTimeM formatString
+      LenientMatch -> firstJust . possiblyParsedTimes
+
     -- | Produces a (lazy) list of possibly parsed times by progressively
     -- dropping longer and longer prefix and/or suffix from the input string.
     --
