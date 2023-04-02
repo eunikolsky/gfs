@@ -1,13 +1,18 @@
 {-# LANGUAGE ApplicativeDo #-}
 
 module OptParse
-  ( configParser
+  ( actionParser
   ) where
 
-import Config (Config(..), defaultRanges)
+import Config (Action(..), Config(..), defaultRanges)
 import InputParser (FormatMatch(..))
 
-import Options.Applicative (Parser, flag, help, long, short, strOption, switch)
+import Options.Applicative ((<|>), Parser, flag, flag', help, long, short, strOption, switch)
+
+actionParser :: Parser Action
+actionParser
+  = flag' ShowVersion (long "version" <> help "Show program version")
+  <|> RunGFS <$> configParser
 
 configParser :: Parser Config
 configParser = do
