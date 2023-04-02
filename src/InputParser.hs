@@ -1,5 +1,6 @@
 module InputParser
   ( Error(..)
+  , FormatMatch(..)
   , parseTimes
   ) where
 
@@ -15,8 +16,17 @@ import qualified Data.Text as T
 newtype Error = InvalidTime Text
   deriving (Eq, Show)
 
-parseTimes :: Text -> [Text] -> Either Error [TimeItem]
-parseTimes format strings = forM strings $ \string ->
+-- | Defines how input strings are parsed according to the format.
+data FormatMatch
+  = ExactMatch
+  -- ^ requires that the input strings exactly match the format string, this is
+  -- faster and works for uniform input
+  | LenientMatch
+  -- ^ searches for time that matches the format string inside the input strings,
+  -- this is much slower and (mostly) works for input with extra data
+
+parseTimes :: FormatMatch -> Text -> [Text] -> Either Error [TimeItem]
+parseTimes _ format strings = forM strings $ \string ->
   maybe (Left $ InvalidTime string) (Right . TimeItem string)
     . firstJust
     . possiblyParsedTimes
