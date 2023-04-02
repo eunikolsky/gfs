@@ -7,11 +7,13 @@ import GFS (GFSRange(..), GFSRanges, TimeInterval, mkGFSRanges, mkTimeInterval)
 
 import Data.Text (Text)
 import Prelude hiding (until)
+import InputParser (FormatMatch)
 
 data Config = Config
   { cfgTimeFormat :: Text
   , cfgGFSRanges :: GFSRanges
   , cfgVerbose :: Bool
+  , cfgFormatMatch :: FormatMatch
   }
 
 -- | The default set of ranges for the GFS algorithm, based on TimeMachine's rules.

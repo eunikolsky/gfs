@@ -1,7 +1,8 @@
 module InputParserSpec where
 
 import GFS (TimeItem(..))
-import InputParser
+import InputParser hiding (parseTimes)
+import InputParser qualified (parseTimes)
 
 import Data.Char
 import Data.Maybe
@@ -17,76 +18,98 @@ spec = parallel $ do
   describe "parseTimes" $ do
     let format = "%Y-%m-%d_%H_%M_%S"
 
-    it "parses times based on format" $ do
-      let actual = parseTimes format
-            [ "1999-12-31_00_00_00"
-            , "2023-07-13_12_31_49"
-            , "2000-01-01_23_59_59"
-            ]
+    context "exact match" $ do
+      let parseTimes = InputParser.parseTimes ExactMatch
 
-          expected = fmap createTime
-            [ (1999, 12, 31, 00, 00, 00)
-            , (2023, 07, 13, 12, 31, 49)
-            , (2000, 01, 01, 23, 59, 59)
-            ]
+      it "parses times based on format" $ do
+        let actual = parseTimes format
+              [ "1999-12-31_00_00_00"
+              , "2023-07-13_12_31_49"
+              , "2000-01-01_23_59_59"
+              ]
 
-      fmap (fmap itTime) actual `shouldBe` Right expected
+            expected = fmap createTime
+              [ (1999, 12, 31, 00, 00, 00)
+              , (2023, 07, 13, 12, 31, 49)
+              , (2000, 01, 01, 23, 59, 59)
+              ]
 
-    it "returns empty list for empty input" $
-      parseTimes format [] `shouldBe` Right []
+        fmap (fmap itTime) actual `shouldBe` Right expected
 
-    it "accepts non-format words in format" $ do
-      let actual = parseTimes "computer_name %Y%m%d-%H%M%S.ext"
-            [ "computer_name 19991231-000000.ext"
-            , "computer_name 20230713-123149.ext"
-            , "computer_name 20000101-235959.ext"
-            ]
+      it "returns empty list for empty input" $
+        parseTimes format [] `shouldBe` Right []
 
-          expected = fmap createTime
-            [ (1999, 12, 31, 00, 00, 00)
-            , (2023, 07, 13, 12, 31, 49)
-            , (2000, 01, 01, 23, 59, 59)
-            ]
+      it "accepts non-format words in format" $ do
+        let actual = parseTimes "computer_name %Y%m%d-%H%M%S.ext"
+              [ "computer_name 19991231-000000.ext"
+              , "computer_name 20230713-123149.ext"
+              , "computer_name 20000101-235959.ext"
+              ]
 
-      fmap (fmap itTime) actual `shouldBe` Right expected
+            expected = fmap createTime
+              [ (1999, 12, 31, 00, 00, 00)
+              , (2023, 07, 13, 12, 31, 49)
+              , (2000, 01, 01, 23, 59, 59)
+              ]
 
-    it "stores the original string in the item" $ do
-      let strings =
-            [ "computer_name 19991231-000000.ext"
-            , "computer_name 20230713-123149.ext"
-            , "computer_name 20000101-235959.ext"
-            ]
-          actual = parseTimes "computer_name %Y%m%d-%H%M%S.ext" strings
+        fmap (fmap itTime) actual `shouldBe` Right expected
 
-          expected = strings
+      it "stores the original string in the item" $ do
+        let strings =
+              [ "computer_name 19991231-000000.ext"
+              , "computer_name 20230713-123149.ext"
+              , "computer_name 20000101-235959.ext"
+              ]
+            actual = parseTimes "computer_name %Y%m%d-%H%M%S.ext" strings
 
-      fmap (fmap itStr) actual `shouldBe` Right expected
+            expected = strings
 
-    it "returns an error for an empty string" $ do
-      parseTimes format [""] `shouldBe` Left (InvalidTime "")
+        fmap (fmap itStr) actual `shouldBe` Right expected
 
-    it "returns the first encountered error" $ do
-      parseTimes format
-        [ "2023-07-13_12_31_49"
-        , "foobar"
-        , ""
-        ] `shouldBe` Left (InvalidTime "foobar")
+      it "returns an error for an empty string" $ do
+        parseTimes format [""] `shouldBe` Left (InvalidTime "")
 
-    prop "skips leading chars until it can parse times" $ \(NonEmpty pairs) -> do
-      let strings = (\(prefix, LocalTimeWithIntSeconds localTime) -> T.pack $
-            getSkippablePrefix prefix <> formatTime defaultTimeLocale (T.unpack format) localTime)
-            <$> pairs
-          actual = parseTimes format strings
-          expected = getLocalTimeWithIntSeconds . snd <$> pairs
-      fmap itTime <$> actual `shouldBe` Right expected
+      it "returns the first encountered error" $ do
+        parseTimes format
+          [ "2023-07-13_12_31_49"
+          , "foobar"
+          , ""
+          ] `shouldBe` Left (InvalidTime "foobar")
 
-    prop "skips trailing chars until it can parse times" $ \(NonEmpty pairs) -> do
-      let strings = (\(UnicodeString suffix, LocalTimeWithIntSeconds localTime) -> T.pack $
-            formatTime defaultTimeLocale (T.unpack format) localTime <> suffix)
-            <$> pairs
-          actual = parseTimes format strings
-          expected = getLocalTimeWithIntSeconds . snd <$> pairs
-      fmap itTime <$> actual `shouldBe` Right expected
+      prop "doesn't skip leading chars" $ \(NonEmpty pairs) -> do
+        let strings = (\(NonEmptyUnicodeString prefix, LocalTimeWithIntSeconds localTime) -> T.pack $
+              prefix <> formatTime defaultTimeLocale (T.unpack format) localTime)
+              <$> pairs
+            actual = parseTimes format strings
+            expected = InvalidTime $ head strings
+        fmap itTime <$> actual `shouldBe` Left expected
+
+      prop "doesn't skip trailing chars" $ \(NonEmpty pairs) -> do
+        let strings = (\(NonEmptyUnicodeString suffix, LocalTimeWithIntSeconds localTime) -> T.pack $
+              formatTime defaultTimeLocale (T.unpack format) localTime <> suffix)
+              <$> pairs
+            actual = parseTimes format strings
+            expected = InvalidTime $ head strings
+        fmap itTime <$> actual `shouldBe` Left expected
+
+    context "lenient match" $ do
+      let parseTimes = InputParser.parseTimes LenientMatch
+
+      prop "skips leading chars until it can parse times" $ \(NonEmpty pairs) -> do
+        let strings = (\(prefix, LocalTimeWithIntSeconds localTime) -> T.pack $
+              getSkippablePrefix prefix <> formatTime defaultTimeLocale (T.unpack format) localTime)
+              <$> pairs
+            actual = parseTimes format strings
+            expected = getLocalTimeWithIntSeconds . snd <$> pairs
+        fmap itTime <$> actual `shouldBe` Right expected
+
+      prop "skips trailing chars until it can parse times" $ \(NonEmpty pairs) -> do
+        let strings = (\(UnicodeString suffix, LocalTimeWithIntSeconds localTime) -> T.pack $
+              formatTime defaultTimeLocale (T.unpack format) localTime <> suffix)
+              <$> pairs
+            actual = parseTimes format strings
+            expected = getLocalTimeWithIntSeconds . snd <$> pairs
+        fmap itTime <$> actual `shouldBe` Right expected
 
 -- | A unicode string that can't end with a digit. Found because the
 -- "skips leading chars until it can parse times" property discovered this
@@ -113,6 +136,18 @@ mkSkippablePrefix s =
 instance Arbitrary SkippablePrefix where
   arbitrary = mkSkippablePrefix . getUnicodeString <$> arbitrary
   shrink (SkippablePrefix p) = mkSkippablePrefix <$> shrink p
+
+newtype NonEmptyUnicodeString = NonEmptyUnicodeString { getNonEmptyUnicodeString :: String }
+  deriving newtype Show
+
+mkNonEmptyUnicodeString :: String -> NonEmptyUnicodeString
+mkNonEmptyUnicodeString s
+  | null s = discard
+  | otherwise = NonEmptyUnicodeString s
+
+instance Arbitrary NonEmptyUnicodeString where
+  arbitrary = mkNonEmptyUnicodeString . getUnicodeString <$> arbitrary
+  shrink = fmap mkNonEmptyUnicodeString . shrink . getNonEmptyUnicodeString
 
 -- | `LocalTime` with integer seconds because the default `format` in tests
 -- doesn't parse milliseconds (should it?).

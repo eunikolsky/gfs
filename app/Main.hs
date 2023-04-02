@@ -27,7 +27,8 @@ parseOptions = execParser $ info (configParser <**> helper)
 printRemoveTimes :: Config -> IO ()
 printRemoveTimes config = runLogging . (>>= logError) . runExceptT $ do
   inputStrings <- liftIO $ T.lines <$> TIO.getContents
-  inputTimes <- fmap mkTimeList . ExceptT . pure $ parseTimes (cfgTimeFormat config) inputStrings
+  inputTimes <- fmap mkTimeList . ExceptT . pure $
+    parseTimes (cfgFormatMatch config) (cfgTimeFormat config) inputStrings
   now <- liftIO getLocalTime
   removeTimes <- unTimeList <$> gfsRemove (cfgGFSRanges config) now inputTimes
   let removeItems = itStr <$> removeTimes
