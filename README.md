@@ -17,7 +17,7 @@ And there are a few extra rules:
 * The newest backup (before "now") is always kept.
 * All backups that are newer than "now" are always kept (even though it shouldn't happen in real life).
 
-An example with times, assuming "now" (the system time when running the command) is "2023-02-06 08:00:00":
+An example with times, assuming "now" (the system time when running the command) is "2023-04-02 10:50:00":
 
 ```bash
 $ echo '2021-12-04-000000
@@ -29,6 +29,7 @@ $ echo '2021-12-04-000000
 2023-02-06-005500
 2023-02-06-005800
 2023-02-06-005900' | gfs -f '%Y-%m-%d-%H%M%S'
+2021-12-10-000000
 2021-12-31-083000
 2023-01-10-200000
 2023-01-10-220000
@@ -63,6 +64,31 @@ Note that the program uses calendar-based calculations for month differences cli
 The program is inspired by [`tarsnapper`](https://github.com/miracle2k/tarsnapper). The difference is `tarsnapper` works only with `tarsnap` and it has other functionality in addition to expiring backups.
 
 There is more background information about the project in my article at <https://egeek.me/2023/02/12/the-gfs-program/>.
+
+### Lenient match
+
+The `--lenient-match` option asks `gfs` to search for time (matching the provided pattern) inside the input strings, which may have arbitrary prefixes and/or suffixes. Here's an example from above with prefixes and suffixes, producing the same dates to cleanup:
+
+```bash
+$ echo 'host0 2021-12-04-000000
+host1 2021-12-10-000000
+foo 2021-12-31-083000
+2023-01-10-150010
+host0 2023-01-10-200000
+2023-01-10-220000
+before 2023-02-06-005500 after
+2023-02-06-005800
+foo 2023-02-06-005900' | gfs -f '%Y-%m-%d-%H%M%S' --lenient-match
+host1 2021-12-10-000000
+foo 2021-12-31-083000
+host0 2023-01-10-200000
+2023-01-10-220000
+2023-02-06-005800
+```
+
+This is useful e.g. when your backup names include variable data (an identifier) and you need that data to remove backups.
+
+Note: the prefix shouldn't end with a digit and the suffix shouldn't start with a digit because that may confuse the time parser. For example, `foo12023-02-01-150000` might be parsed as year `12023`.
 
 ## Examples
 
@@ -119,9 +145,85 @@ home-2023-01-31_05-31-37                   107 MB            89 MB
 Deleted data                               5.1 kB           5.7 kB
 ```
 
+### `restic`
+
+`gfs` can be used with [`restic`](https://restic.net/). Note that it already has a similar [snapshots removal policy](https://restic.readthedocs.io/en/stable/060_forget.html#removing-snapshots-according-to-a-policy), however its options are different and `gfs` might be more appropriate for you.
+
+`restic` (unlike `tarsnap`) identifies backups (snapshots) with a hash and their dates are secondary. Looks like the backup dates in the json format use a fixed format, which can be parsed with `%Y-%m-%dT%H:%M:%S.%-q%Ez`. The basic command can look like:
+
+```bash
+$ restic -r home snapshots --json | tee restic.lst | jq -r 'map(.time + "|" + .short_id) | .[]' | gfs -f '%Y-%m-%dT%H:%M:%S.%-q%Ez' --lenient-match | cut -d'|' -f2 | xargs -p restic -r home -v forget --prune
+```
+
+or multiline:
+
+```bash
+# list the backups
+$ restic -r home snapshots --json \
+# save the list to a file in addition to piping it to gfs
+    | tee restic.lst
+# print backup's time and identifier, one backup per line
+    | jq -r 'map(.time + "|" + .short_id) | .[]' \
+# run gfs to figure out which backups to remove using the default format string
+    | gfs -f '%Y-%m-%dT%H:%M:%S.%-q%Ez' --lenient-match \
+# extract the identifier of each backup to cleanup
+    | cut -d'|' -f2 \
+# delete the backups after asking for a confirmation
+    | xargs -p restic -r home -v forget --prune
+```
+
+For reference, the `jq` command produces a list like this:
+
+```
+2021-09-19T10:31:06.382683+03:00|922246b0
+2021-10-14T16:34:13.432662+03:00|7895239a
+2021-11-11T05:58:33.99914+02:00|722b7def
+```
+
+A more real-life example where `restic` is run as a superuser (to make backups of the entire system), so we need `sudo` with environment variables:
+
+```bash
+# list the backups, passing the necessary environment variables to the root session
+$ sudo --preserve-env=AWS_SECRET_ACCESS_KEY,AWS_ACCESS_KEY_ID,RESTIC_PASSWORD_COMMAND,RESTIC_REPOSITORY \
+    restic -r "${RESTIC_REPOSITORY}/home" snapshots --json \
+# save the list to a file in addition to piping it to gfs
+    | jq -r 'map(.time + "|" + .short_id) | .[]' \
+# run gfs to figure out which backups to remove using the default format string
+    | gfs -f '%Y-%m-%dT%H:%M:%S.%-q%Ez' --lenient-match \
+# extract the identifier of each backup to cleanup
+    | cut -d'|' -f2 \
+# delete the backups after asking for a confirmation, `caffeinate` prevents macos
+# from sleeping while the command is running; `noti` displays a notification when
+# the command finishes; `time` shows how long the command took
+    | xargs -p caffeinate noti time sudo --preserve-env=AWS_SECRET_ACCESS_KEY,AWS_ACCESS_KEY_ID,RESTIC_PASSWORD_COMMAND,RESTIC_REPOSITORY \
+    restic -r "${RESTIC_REPOSITORY}/home" -v forget --prune
+```
+
+Example output:
+
+```bash
+Password:
+caffeinate noti time sudo --preserve-env=AWS_SECRET_ACCESS_KEY,AWS_ACCESS_KEY_ID,RESTIC_PASSWORD_COMMAND,RESTIC_REPOSITORY restic -r s3:s3.amazonaws.com/bucket_name/home -v forget --prune 922246b0?...y
+repository 90b841ae opened (version 1)
+[0:00] 100.00%  1 / 1 files deleted
+1 snapshots have been removed, running prune
+loading indexes...
+loading all snapshots...
+finding data that is still in use for 99 snapshots
+[4:20] 100.00%  99 / 99 snapshots
+searching used packs...
+collecting packs for deletion and repacking
+will remove pack 4ba6104b as it is unused and not indexed
+[0:29] 100.00%  999078 / 999078 packs processed
+…
+removing 80 old packs
+[0:09] 100.00%  80 / 80 files deleted
+done
+      515.76 real      1270.59 user       212.15 sys
+```
+
 ## TODO
 
-* Support parsing strings that contain arbitrary data in addition to time.
 * Ignore unparseable strings instead of stopping with an error.
 * User-configurable GFS ranges.
 * Use a custom "now" time if provided (for debugging).

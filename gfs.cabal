@@ -5,13 +5,13 @@ cabal-version: 1.12
 -- see: https://github.com/sol/hpack
 
 name:           gfs
-version:        0.1.0
-description:    Please see the README on GitHub at <https://github.com/githubuser/gfs#readme>
-homepage:       https://github.com/githubuser/gfs#readme
-bug-reports:    https://github.com/githubuser/gfs/issues
-author:         Author name here
-maintainer:     example@example.com
-copyright:      2021 Author name here
+version:        0.2.0
+description:    Please see the README on GitHub at <https://github.com/eunikolsky/gfs#readme>
+homepage:       https://github.com/eunikolsky/gfs#readme
+bug-reports:    https://github.com/eunikolsky/gfs/issues
+author:         Eugene Nikolsky
+maintainer:     e@egeek.me
+copyright:      2023 Eugene Nikolsky
 license:        BSD3
 license-file:   LICENSE
 build-type:     Simple
@@ -21,7 +21,7 @@ extra-source-files:
 
 source-repository head
   type: git
-  location: https://github.com/githubuser/gfs
+  location: https://github.com/eunikolsky/gfs
 
 library
   exposed-modules:
@@ -38,6 +38,10 @@ library
   hs-source-dirs:
       src
   default-extensions:
+      DerivingStrategies
+      GeneralizedNewtypeDeriving
+      ImportQualifiedPost
+      NamedFieldPuns
       NumericUnderscores
       OverloadedStrings
       TypeApplications
@@ -58,6 +62,10 @@ executable gfs
   hs-source-dirs:
       app
   default-extensions:
+      DerivingStrategies
+      GeneralizedNewtypeDeriving
+      ImportQualifiedPost
+      NamedFieldPuns
       NumericUnderscores
       OverloadedStrings
       TypeApplications
@@ -87,6 +95,10 @@ test-suite gfs-test
   hs-source-dirs:
       test
   default-extensions:
+      DerivingStrategies
+      GeneralizedNewtypeDeriving
+      ImportQualifiedPost
+      NamedFieldPuns
       NumericUnderscores
       OverloadedStrings
       TypeApplications
@@ -101,6 +113,7 @@ test-suite gfs-test
     , monad-logger
     , monad-loops
     , mtl
+    , quickcheck-instances
     , text
     , time
   default-language: Haskell2010

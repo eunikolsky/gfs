@@ -1,5 +1,5 @@
 name:                gfs
-version:             0.1.0
+version:             0.2.0
 github:              "eunikolsky/gfs"
 license:             BSD3
 author:              "Eugene Nikolsky"
@@ -36,6 +36,10 @@ ghc-options:
   - -Wmissing-methods
 
 default-extensions:
+  - DerivingStrategies
+  - GeneralizedNewtypeDeriving
+  - ImportQualifiedPost
+  - NamedFieldPuns
   - NumericUnderscores
   - OverloadedStrings
   - TypeApplications
@@ -74,3 +78,4 @@ tests:
     - hspec-discover
     - monad-loops
     - mtl
+    - quickcheck-instances
