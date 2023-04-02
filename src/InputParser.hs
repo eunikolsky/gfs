@@ -23,7 +23,7 @@ data FormatMatch
   -- faster and works for uniform input
   | LenientMatch
   -- ^ searches for time that matches the format string inside the input strings,
-  -- this is much slower and (mostly) works for input with extra data
+  -- this is (much?) slower and (mostly) works for input with extra data
 
 parseTimes :: FormatMatch -> Text -> [Text] -> Either Error [TimeItem]
 parseTimes match format strings = forM strings $ \string ->

@@ -30,7 +30,7 @@ configParser = do
 
   formatMatch <- flag ExactMatch LenientMatch
     ( long "lenient-match"
-    <> help "Search for time inside input strings (slower)"
+    <> help "Search for time inside input strings (might be slower)"
     )
 
   pure $ Config
