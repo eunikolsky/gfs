@@ -24,7 +24,7 @@ testd-ext:
 
 .PHONY:
 testfw:
-	@stack test --fast --file-watch $(MAIN_TEST_TARGET)
+	@stack test --fast --file-watch $(MAIN_TEST_TARGET) $${MATCH:+--ta="--match \"/$${MATCH}/\""}
 
 .PHONY:
 buildd:
