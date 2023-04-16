@@ -4,6 +4,7 @@ import GFS.Internal.TimeInterval
 
 import GFS.Internal.ALocalTime
 
+import Control.Monad
 import Data.Time.Calendar
 import Data.Time.LocalTime
 import Test.Hspec
@@ -82,6 +83,15 @@ spec = do
       property $ \(Positive month) ->
         forAll chooseIncreasingInts $ \(hour0, hour1) ->
           mkTimeInterval month hour0 < mkTimeInterval month hour1
+
+  describe "Show instance (examples)" $ do
+    let mkTimeIntervalHours = mkTimeInterval 0
+
+    it "shows hours under a day" $
+      -- this looping is done inside the test so that it doesn't produce a lot
+      -- of test case output
+      forM_ [1..23] $ \h ->
+        show (mkTimeIntervalHours h) `shouldBe` (show h <> "h")
 
 chooseIncreasingIntervals :: Gen (TimeInterval, TimeInterval)
 chooseIncreasingIntervals = do

@@ -32,7 +32,7 @@ data TimeInterval = TimeInterval
   deriving (Eq, Ord)
 
 instance Show TimeInterval where
-  show (TimeInterval months hours) = mconcat ["I", show months, "M", show hours, "H"]
+  show (TimeInterval _ hours) = mconcat [show hours, "h"]
 
 mkTimeInterval :: Int -> Int -> TimeInterval
 mkTimeInterval months hours = TimeInterval { tiMonths = months, tiHours = hours }
