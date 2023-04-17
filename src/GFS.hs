@@ -8,7 +8,6 @@ module GFS
   , TimeInterval
   , TimeItem(..)
   , TimeList
-  , addTimeInterval
   , mkGFSRanges
   , mkTimeInterval
   , mkTimeList

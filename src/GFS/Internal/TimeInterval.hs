@@ -1,6 +1,5 @@
 module GFS.Internal.TimeInterval
   ( TimeInterval -- not exporting the constructor
-  , addTimeInterval
   , mkTimeInterval
   , scaleTimeInterval
   , showTimeInterval
@@ -57,21 +56,18 @@ getIntegralComponent k d = let (intComponent, rest) = d `divMod` k
 mkTimeInterval :: Months -> Hours -> TimeInterval
 mkTimeInterval months hours = TimeInterval { tiMonths = months, tiHours = hours }
 
-addTimeInterval :: TimeInterval -> LocalTime -> LocalTime
-addTimeInterval ti = addHours 1 ti . addMonths 1 ti
-
 subTimeInterval :: TimeInterval -> LocalTime -> LocalTime
-subTimeInterval ti = addMonths (-1) ti . addHours (-1) ti
+subTimeInterval ti = subMonths ti . subHours ti
 
-addHours :: Int -> TimeInterval -> LocalTime -> LocalTime
-addHours k (TimeInterval _ hours) = addLocalTime diffTime
+subHours :: TimeInterval -> LocalTime -> LocalTime
+subHours (TimeInterval _ hours) = addLocalTime diffTime
   where
     diffTime :: NominalDiffTime
-    diffTime = realToFrac $ k * fromIntegral hours * secondsInHour
+    diffTime = realToFrac . negate @Int $ fromIntegral hours * secondsInHour
 
-addMonths :: Int -> TimeInterval -> LocalTime -> LocalTime
-addMonths k (TimeInterval months _) time = time
-  { localDay = addGregorianMonthsClip (fromIntegral $ k * fromIntegral months) (localDay time)
+subMonths :: TimeInterval -> LocalTime -> LocalTime
+subMonths (TimeInterval months _) time = time
+  { localDay = addGregorianMonthsClip (fromIntegral . negate @Int $ fromIntegral months) (localDay time)
   }
 
 scaleTimeInterval :: Word16 -> TimeInterval -> TimeInterval
