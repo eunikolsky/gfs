@@ -310,7 +310,7 @@ instance Arbitrary AGFSRange where
     -- note: so that the max hours is one week; otherwise it's possible that
     -- an interval with a few months and a lot of hours is actually larger than
     -- an interval with many months and a few hours
-    scale <- chooseInt (2, 7)
+    scale <- fromIntegral <$> chooseInt (2, 7)
     let limit = scaleTimeInterval scale step
     pure . AGFSRange $ GFSRange step limit
 

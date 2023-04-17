@@ -12,6 +12,7 @@ import Data.Time.Calendar
 import Data.Time.Clock
 import Data.Time.LocalTime
 import qualified Data.Text as T
+import Numeric.Natural
 
 type Hours = Int
 type Months = Int
@@ -69,13 +70,23 @@ addMonths (TimeInterval months _) time = time
   }
 
 subTimeInterval :: TimeInterval -> LocalTime -> LocalTime
-subTimeInterval ti = addMonths negativeTi . addHours negativeTi
-  where negativeTi = scaleTimeInterval (-1) ti
+subTimeInterval ti = subMonths ti . subHours ti
 
-scaleTimeInterval :: Int -> TimeInterval -> TimeInterval
+subHours :: TimeInterval -> LocalTime -> LocalTime
+subHours (TimeInterval _ hours) = addLocalTime diffTime
+  where
+    diffTime :: NominalDiffTime
+    diffTime = realToFrac . negate $ hours * secondsInHour
+
+subMonths :: TimeInterval -> LocalTime -> LocalTime
+subMonths (TimeInterval months _) time = time
+  { localDay = addGregorianMonthsClip (fromIntegral $ negate months) (localDay time)
+  }
+
+scaleTimeInterval :: Natural -> TimeInterval -> TimeInterval
 scaleTimeInterval x (TimeInterval months hours) = TimeInterval
-  { tiMonths = months * x
-  , tiHours = hours * x
+  { tiMonths = months * fromIntegral x
+  , tiHours = hours * fromIntegral x
   }
 
 secondsInHour :: Int
