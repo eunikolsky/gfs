@@ -1,5 +1,9 @@
 # Changelog for `gfs`
 
+## 0.2.1
+
+* Show GFS ranges in a more compact form in the debug output.
+
 ## 0.2.0
 
 * Support parsing strings containing arbitrary data before and/or after the date with the `--lenient-match` option (may be slower).
