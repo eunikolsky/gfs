@@ -87,6 +87,14 @@ spec = do
       forM_ [1, 2, 5, 10] $ \w ->
         show (mkTimeIntervalHours $ w * 7 * 24) `shouldBe` (show w <> "w")
 
+    it "shows months under a year" $
+      forM_ [1..11] $ \m ->
+        show (mkTimeIntervalMonths m) `shouldBe` (show m <> "m")
+
+    it "shows months over a year" $
+      forM_ [13, 14, 23, 25] $ \m ->
+        show (mkTimeIntervalMonths m) `shouldBe` (show m <> "m")
+
 chooseIncreasingIntervals :: Gen (TimeInterval, TimeInterval)
 chooseIncreasingIntervals = do
   useHours <- chooseAny

@@ -45,7 +45,7 @@ instance Show TimeInterval where
       Just weeks -> show weeks <> "w"
       Nothing -> show days <> "d"
     Nothing -> show hours <> "h"
-  show (Months months) = show months <> " months"
+  show (Months months) = show months <> "m"
 
 getDays :: Hours -> Maybe Days
 getDays = getIntegralComponent 24
