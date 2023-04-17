@@ -12,12 +12,14 @@ import Data.Time.Calendar
 import Data.Time.Clock
 import Data.Time.LocalTime
 import qualified Data.Text as T
-import Numeric.Natural
+import Data.Word
 
-type Hours = Int
-type Months = Int
-type Days = Int
-type Weeks = Int
+-- 16-bit value because it should be possible to represent 4 weeks (672 hours)
+type Hours = Word16
+-- 16-bit value because an 8-bit month could only go up to 21 years
+type Months = Word16
+type Days = Word16
+type Weeks = Word16
 
 -- | Duration of time for the GFS algorithm with the minimum resolution
 -- of one hour — this will be the minimum step for the default settings,
@@ -65,20 +67,20 @@ addHours :: Int -> TimeInterval -> LocalTime -> LocalTime
 addHours k (TimeInterval _ hours) = addLocalTime diffTime
   where
     diffTime :: NominalDiffTime
-    diffTime = realToFrac $ k * hours * secondsInHour
+    diffTime = realToFrac $ k * fromIntegral hours * secondsInHour
 
 addMonths :: Int -> TimeInterval -> LocalTime -> LocalTime
 addMonths k (TimeInterval months _) time = time
-  { localDay = addGregorianMonthsClip (fromIntegral $ k * months) (localDay time)
+  { localDay = addGregorianMonthsClip (fromIntegral $ k * fromIntegral months) (localDay time)
   }
 
-scaleTimeInterval :: Natural -> TimeInterval -> TimeInterval
+scaleTimeInterval :: Word16 -> TimeInterval -> TimeInterval
 scaleTimeInterval x (TimeInterval months hours) = TimeInterval
   { tiMonths = months * fromIntegral x
   , tiHours = hours * fromIntegral x
   }
 
-secondsInHour :: Int
+secondsInHour :: Num a => a
 secondsInHour = 60 * 60
 
 showTimeInterval :: TimeInterval -> Text

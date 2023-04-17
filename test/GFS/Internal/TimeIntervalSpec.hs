@@ -70,8 +70,10 @@ spec = do
 
   describe "Ord instance" $ do
     let chooseIncreasingInts = do
-          int0 <- arbitrary :: Gen Int
-          offset <- getPositive <$> arbitrary
+          -- bounds are used here in order to avoid overflows of `Hours` and
+          -- `Months`; big values aren't practical anyway
+          int0 <- chooseBoundedIntegral (0, 10000)
+          offset <- chooseBoundedIntegral (1, 10000)
           pure (int0, int0 + offset)
 
     it "compares months first" $
@@ -113,9 +115,9 @@ spec = do
 
 chooseIncreasingIntervals :: Gen (TimeInterval, TimeInterval)
 chooseIncreasingIntervals = do
-  months <- chooseInt (0, 24)
-  hours <- chooseInt (0, 72)
-  (mOffset, hOffset) <- (,) <$> chooseInt (1, 24) <*> chooseInt (1, 72)
+  months <- chooseBoundedIntegral (0, 24)
+  hours <- chooseBoundedIntegral (0, 72)
+  (mOffset, hOffset) <- (,) <$> chooseBoundedIntegral (1, 24) <*> chooseBoundedIntegral (1, 72)
   pure (mkTimeInterval months hours
       , mkTimeInterval (months + mOffset) (hours + hOffset))
 
