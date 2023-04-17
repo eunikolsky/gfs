@@ -14,7 +14,7 @@ check-test:
 
 .PHONY:
 testd:
-	@ghcid -c 'HSPEC_FORMAT=failed-examples stack ghci $(MAIN_TEST_TARGET) --ghci-options=-fobject-code' -T main
+	@ghcid -c 'HSPEC_FORMAT=failed-examples stack ghci --test --main-is $(MAIN_TEST_TARGET) --ghci-options=-fobject-code' -T main
 
 # run like this: `m testfw-ext MATCH=InputParser SEED=401874497`
 # both variables are optional
@@ -24,7 +24,7 @@ testd-ext:
 
 .PHONY:
 testfw:
-	@stack test --fast --file-watch $(MAIN_TEST_TARGET)
+	@stack test --fast --file-watch $(MAIN_TEST_TARGET) $${MATCH:+--ta="--match \"/$${MATCH}/\""}
 
 .PHONY:
 buildd:

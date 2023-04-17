@@ -18,20 +18,29 @@ import qualified Data.Set as Set
 
 spec :: Spec
 spec = do
+  let hour = mkTimeIntervalHours 1
+      day = mkTimeIntervalHours 24
+      month = mkTimeIntervalMonths 1
+      year = mkTimeIntervalMonths 12
+      hourly = GFSRange hour day
+      daily = GFSRange day month
+      monthly = GFSRange month year
+      sampleRanges = mkGFSRanges hourly [daily, monthly]
+
   describe "applyRange" $ do
     context "produces correct times (examples)" $ do
       it "basic example" $
         let now = read "2023-08-20 23:30:00" :: LocalTime
             startTime = read "2023-08-10 20:45:00"
             range = GFSRange
-              { rStep = mkTimeInterval 1 2
-              , rLimit = mkTimeInterval 3 10
+              { rStep = mkTimeIntervalMonths 1
+              , rLimit = mkTimeIntervalMonths 3
               }
             endTime = read "2022-01-01 00:00:00"
             expected = fmap read
-              [ "2023-05-20 13:30:00"
-              , "2023-06-10 16:45:00"
-              , "2023-07-10 18:45:00"
+              [ "2023-05-20 23:30:00"
+              , "2023-06-10 20:45:00"
+              , "2023-07-10 20:45:00"
               ]
             actual = applyRange endTime range now startTime
         in actual `shouldBe` expected
@@ -40,8 +49,8 @@ spec = do
         let now = read "2023-03-31 12:00:00" :: LocalTime
             startTime = now
             range = GFSRange
-              { rStep = mkTimeInterval 1 0
-              , rLimit = mkTimeInterval 3 0
+              { rStep = mkTimeIntervalMonths 1
+              , rLimit = mkTimeIntervalMonths 3
               }
             endTime = read "2022-01-01 00:00:00"
             expected = fmap read
@@ -126,14 +135,6 @@ spec = do
     context "produces correct times (examples)" $ do
       it "basic example" $
         let now = read "2023-11-19 22:00:00"
-            hour = mkTimeInterval 0 1
-            day = mkTimeInterval 0 24
-            month = mkTimeInterval 1 0
-            year = mkTimeInterval 12 0
-            hourly = GFSRange hour day
-            daily = GFSRange day month
-            monthly = GFSRange month year
-            ranges = mkGFSRanges hourly [daily, monthly]
             expected = mkCheckpoints
               now
               -- hourly
@@ -206,7 +207,7 @@ spec = do
               , "2022-12-19 22:00:00"
               , "2022-11-19 22:00:00"
               ]
-        in applyRanges ranges now `shouldBe` expected
+        in applyRanges sampleRanges now `shouldBe` expected
 
     it "includes now" $
       property $ \(AGFSRanges ranges) (ALocalTime now) ->
@@ -263,6 +264,17 @@ spec = do
           , "\nmissing in actual: ", show missingInActual
           ]) $ null missingInActual
 
+  describe "Show GFSRange instance (examples)" $ do
+    it "shows step and limits separated by colon" $
+      let step = mkTimeIntervalHours 24
+          limit = mkTimeIntervalMonths 12
+          range = GFSRange step limit
+      in show range `shouldBe` "1d:1y"
+
+  describe "Show GFSRanges instance (examples)" $ do
+    it "shows ranges separated by comma" $
+      show sampleRanges `shouldBe` "1h:1d,1d:1m,1m:1y"
+
 -- TODO this function repeats the production code; avoid this somehow?
 getEndTime :: GFSRange -> LocalTime -> LocalTime
 getEndTime (GFSRange _ limit) = subTimeInterval limit
@@ -302,15 +314,18 @@ newtype AGFSRange = AGFSRange { unAGFSRange :: GFSRange }
 
 instance Arbitrary AGFSRange where
   arbitrary = do
-    months <- chooseInt (0, 10)
-    let dayInHours = 24
-    hours <- chooseInt (0, dayInHours)
-    let hours' = if months == 0 && hours == 0 then 1 else hours
-    let step = mkTimeInterval months hours'
+    useHours <- chooseAny
+    step <- if useHours
+      then
+        let dayInHours = 24
+        in mkTimeIntervalHours <$> chooseBoundedIntegral (1, dayInHours)
+      else
+        mkTimeIntervalMonths <$> chooseBoundedIntegral (1, 10)
+
     -- note: so that the max hours is one week; otherwise it's possible that
     -- an interval with a few months and a lot of hours is actually larger than
     -- an interval with many months and a few hours
-    scale <- chooseInt (2, 7)
+    scale <- chooseBoundedIntegral (2, 7)
     let limit = scaleTimeInterval scale step
     pure . AGFSRange $ GFSRange step limit
 

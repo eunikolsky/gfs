@@ -15,10 +15,10 @@ spec :: Spec
 spec =
   describe "gfsRemove" $ do
     let now = read "2023-11-19 22:00:00"
-        hour = mkTimeInterval 0 1
-        day = mkTimeInterval 0 24
-        month = mkTimeInterval 1 0
-        year = mkTimeInterval 12 0
+        hour = mkTimeIntervalHours 1
+        day = mkTimeIntervalHours 24
+        month = mkTimeIntervalMonths 1
+        year = mkTimeIntervalMonths 12
         hourly = GFSRange hour day
         daily = GFSRange day month
         monthly = GFSRange month year
@@ -91,7 +91,7 @@ spec =
     it "shifting now by month keeps \"most\" of old data (example)" $ do
       -- I think it's more obvious for a human to see what's left, not what's removed,
       -- after two cleanups in this test
-      let shiftedNowByMonth = addTimeInterval month now -- "2023-12-19 22:00:00"
+      let shiftedNowByMonth = read "2023-12-19 22:00:00"
           expectedLeft = mkTimeList $ fmap ((TimeItem "") . read)
             -- monthly [2022-12-19 22:00:00; 2023-11-19 22:00:00):
             [ "2022-12-19 22:00:00"
@@ -115,7 +115,7 @@ spec =
       leftAfterMonth `shouldBe` expectedLeft
 
     it "shifting now day-by-day for a month is the same as shifting now by month (example)" $ do
-      let shiftedNowByMonth = addTimeInterval month now
+      let shiftedNowByMonth = read "2023-12-19 22:00:00"
 
       leftAfterMonth <- runNoLoggingT $ gfsLeft ranges shiftedNowByMonth times
 
