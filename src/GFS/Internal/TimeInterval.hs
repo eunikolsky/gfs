@@ -1,7 +1,5 @@
 module GFS.Internal.TimeInterval
   ( TimeInterval -- not exporting the constructor
-  , addHours
-  , addMonths
   , addTimeInterval
   , mkTimeInterval
   , scaleTimeInterval
@@ -14,11 +12,14 @@ import Data.Time.Calendar
 import Data.Time.Clock
 import Data.Time.LocalTime
 import qualified Data.Text as T
+import Data.Word
 
-type Hours = Int
-type Months = Int
-type Days = Int
-type Weeks = Int
+-- 16-bit value because it should be possible to represent 4 weeks (672 hours)
+type Hours = Word16
+-- 16-bit value because an 8-bit month could only go up to 21 years
+type Months = Word16
+type Days = Word16
+type Weeks = Word16
 
 -- | Duration of time for the GFS algorithm with the minimum resolution
 -- of one hour — this will be the minimum step for the default settings,
@@ -57,30 +58,29 @@ mkTimeInterval :: Months -> Hours -> TimeInterval
 mkTimeInterval months hours = TimeInterval { tiMonths = months, tiHours = hours }
 
 addTimeInterval :: TimeInterval -> LocalTime -> LocalTime
-addTimeInterval ti = addHours ti . addMonths ti
-
-addHours :: TimeInterval -> LocalTime -> LocalTime
-addHours (TimeInterval _ hours) = addLocalTime diffTime
-  where
-    diffTime :: NominalDiffTime
-    diffTime = realToFrac $ hours * secondsInHour
-
-addMonths :: TimeInterval -> LocalTime -> LocalTime
-addMonths (TimeInterval months _) time = time
-  { localDay = addGregorianMonthsClip (fromIntegral months) (localDay time)
-  }
+addTimeInterval ti = addHours 1 ti . addMonths 1 ti
 
 subTimeInterval :: TimeInterval -> LocalTime -> LocalTime
-subTimeInterval ti = addMonths negativeTi . addHours negativeTi
-  where negativeTi = scaleTimeInterval (-1) ti
+subTimeInterval ti = addMonths (-1) ti . addHours (-1) ti
 
-scaleTimeInterval :: Int -> TimeInterval -> TimeInterval
-scaleTimeInterval x (TimeInterval months hours) = TimeInterval
-  { tiMonths = months * x
-  , tiHours = hours * x
+addHours :: Int -> TimeInterval -> LocalTime -> LocalTime
+addHours k (TimeInterval _ hours) = addLocalTime diffTime
+  where
+    diffTime :: NominalDiffTime
+    diffTime = realToFrac $ k * fromIntegral hours * secondsInHour
+
+addMonths :: Int -> TimeInterval -> LocalTime -> LocalTime
+addMonths k (TimeInterval months _) time = time
+  { localDay = addGregorianMonthsClip (fromIntegral $ k * fromIntegral months) (localDay time)
   }
 
-secondsInHour :: Int
+scaleTimeInterval :: Word16 -> TimeInterval -> TimeInterval
+scaleTimeInterval x (TimeInterval months hours) = TimeInterval
+  { tiMonths = months * fromIntegral x
+  , tiHours = hours * fromIntegral x
+  }
+
+secondsInHour :: Num a => a
 secondsInHour = 60 * 60
 
 showTimeInterval :: TimeInterval -> Text

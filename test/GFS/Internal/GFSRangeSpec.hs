@@ -302,15 +302,15 @@ newtype AGFSRange = AGFSRange { unAGFSRange :: GFSRange }
 
 instance Arbitrary AGFSRange where
   arbitrary = do
-    months <- chooseInt (0, 10)
+    months <- chooseBoundedIntegral (0, 10)
     let dayInHours = 24
-    hours <- chooseInt (0, dayInHours)
+    hours <- chooseBoundedIntegral (0, dayInHours)
     let hours' = if months == 0 && hours == 0 then 1 else hours
     let step = mkTimeInterval months hours'
     -- note: so that the max hours is one week; otherwise it's possible that
     -- an interval with a few months and a lot of hours is actually larger than
     -- an interval with many months and a few hours
-    scale <- chooseInt (2, 7)
+    scale <- chooseBoundedIntegral (2, 7)
     let limit = scaleTimeInterval scale step
     pure . AGFSRange $ GFSRange step limit
 
