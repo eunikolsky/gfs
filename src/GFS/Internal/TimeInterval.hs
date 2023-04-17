@@ -32,7 +32,13 @@ data TimeInterval = TimeInterval
   deriving (Eq, Ord)
 
 instance Show TimeInterval where
-  show (TimeInterval _ hours) = mconcat [show hours, "h"]
+  show (TimeInterval _ hours) = case getDays hours of
+    Just days -> show days <> "d"
+    Nothing -> show hours <> "h"
+
+getDays :: Int -> Maybe Int
+getDays h = let (days, moreHours) = h `divMod` 24
+  in if moreHours == 0 then Just days else Nothing
 
 mkTimeInterval :: Int -> Int -> TimeInterval
 mkTimeInterval months hours = TimeInterval { tiMonths = months, tiHours = hours }

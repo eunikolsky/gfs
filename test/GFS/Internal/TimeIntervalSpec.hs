@@ -86,12 +86,17 @@ spec = do
 
   describe "Show instance (examples)" $ do
     let mkTimeIntervalHours = mkTimeInterval 0
+        mkTimeIntervalDays = mkTimeInterval 0 . (* 24)
 
     it "shows hours under a day" $
       -- this looping is done inside the test so that it doesn't produce a lot
       -- of test case output
       forM_ [1..23] $ \h ->
         show (mkTimeIntervalHours h) `shouldBe` (show h <> "h")
+
+    it "shows days under a week" $
+      forM_ [1..6] $ \d ->
+        show (mkTimeIntervalDays d) `shouldBe` (show d <> "d")
 
 chooseIncreasingIntervals :: Gen (TimeInterval, TimeInterval)
 chooseIncreasingIntervals = do
