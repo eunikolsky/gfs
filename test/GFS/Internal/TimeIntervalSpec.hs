@@ -113,6 +113,14 @@ spec = do
       forM_ [1..6] $ \w ->
         show (mkTimeIntervalWeeks w) `shouldBe` (show w <> "w")
 
+    it "shows days over a week" $
+      forM_ [8, 9, 13, 15] $ \d ->
+        show (mkTimeIntervalDays d) `shouldBe` (show d <> "d")
+
+    it "preferes integral weeks over days" $
+      forM_ [1, 2, 5, 10] $ \w ->
+        show (mkTimeIntervalHours $ w * 7 * 24) `shouldBe` (show w <> "w")
+
 chooseIncreasingIntervals :: Gen (TimeInterval, TimeInterval)
 chooseIncreasingIntervals = do
   months <- chooseBoundedIntegral (0, 24)
