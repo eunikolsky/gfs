@@ -86,7 +86,8 @@ spec = do
 
   describe "Show instance (examples)" $ do
     let mkTimeIntervalHours = mkTimeInterval 0
-        mkTimeIntervalDays = mkTimeInterval 0 . (* 24)
+        mkTimeIntervalDays = mkTimeIntervalHours . (* 24)
+        mkTimeIntervalWeeks = mkTimeIntervalDays . (* 7)
 
     it "shows hours under a day" $
       -- this looping is done inside the test so that it doesn't produce a lot
@@ -105,6 +106,10 @@ spec = do
     it "preferes integral days over hours" $
       forM_ [1, 2, 5, 10] $ \d ->
         show (mkTimeIntervalHours $ d * 24) `shouldBe` (show d <> "d")
+
+    it "shows weeks" $
+      forM_ [1..6] $ \w ->
+        show (mkTimeIntervalWeeks w) `shouldBe` (show w <> "w")
 
 chooseIncreasingIntervals :: Gen (TimeInterval, TimeInterval)
 chooseIncreasingIntervals = do

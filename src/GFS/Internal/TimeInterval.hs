@@ -18,6 +18,7 @@ import qualified Data.Text as T
 type Hours = Int
 type Months = Int
 type Days = Int
+type Weeks = Int
 
 -- | Duration of time for the GFS algorithm with the minimum resolution
 -- of one hour — this will be the minimum step for the default settings,
@@ -37,12 +38,18 @@ data TimeInterval = TimeInterval
 
 instance Show TimeInterval where
   show (TimeInterval _ hours) = case getDays hours of
-    Just days -> show days <> "d"
+    Just days -> case getWeeks days of
+      Just weeks -> show weeks <> "w"
+      Nothing -> show days <> "d"
     Nothing -> show hours <> "h"
 
 getDays :: Hours -> Maybe Days
 getDays h = let (days, moreHours) = h `divMod` 24
   in if moreHours == 0 then Just days else Nothing
+
+getWeeks :: Days -> Maybe Weeks
+getWeeks d = let (weeks, moreDays) = d `divMod` 7
+  in if moreDays == 0 then Just weeks else Nothing
 
 mkTimeInterval :: Months -> Hours -> TimeInterval
 mkTimeInterval months hours = TimeInterval { tiMonths = months, tiHours = hours }
