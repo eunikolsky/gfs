@@ -102,6 +102,10 @@ spec = do
       forM_ [25, 26, 47, 49] $ \h ->
         show (mkTimeIntervalHours h) `shouldBe` (show h <> "h")
 
+    it "preferes integral days over hours" $
+      forM_ [1, 2, 5, 10] $ \d ->
+        show (mkTimeIntervalHours $ d * 24) `shouldBe` (show d <> "d")
+
 chooseIncreasingIntervals :: Gen (TimeInterval, TimeInterval)
 chooseIncreasingIntervals = do
   months <- chooseInt (0, 24)
