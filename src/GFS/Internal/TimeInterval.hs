@@ -44,12 +44,14 @@ instance Show TimeInterval where
     Nothing -> show hours <> "h"
 
 getDays :: Hours -> Maybe Days
-getDays h = let (days, moreHours) = h `divMod` 24
-  in if moreHours == 0 then Just days else Nothing
+getDays = getIntegralComponent 24
 
 getWeeks :: Days -> Maybe Weeks
-getWeeks d = let (weeks, moreDays) = d `divMod` 7
-  in if moreDays == 0 then Just weeks else Nothing
+getWeeks = getIntegralComponent 7
+
+getIntegralComponent :: Integral a => a -> a -> Maybe a
+getIntegralComponent k d = let (intComponent, rest) = d `divMod` k
+  in if rest == 0 then Just intComponent else Nothing
 
 mkTimeInterval :: Months -> Hours -> TimeInterval
 mkTimeInterval months hours = TimeInterval { tiMonths = months, tiHours = hours }
