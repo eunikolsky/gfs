@@ -24,14 +24,14 @@ spec = do
         let now = read "2023-08-20 23:30:00" :: LocalTime
             startTime = read "2023-08-10 20:45:00"
             range = GFSRange
-              { rStep = mkTimeInterval 1 2
-              , rLimit = mkTimeInterval 3 10
+              { rStep = mkTimeIntervalMonths 1
+              , rLimit = mkTimeIntervalMonths 3
               }
             endTime = read "2022-01-01 00:00:00"
             expected = fmap read
-              [ "2023-05-20 13:30:00"
-              , "2023-06-10 16:45:00"
-              , "2023-07-10 18:45:00"
+              [ "2023-05-20 23:30:00"
+              , "2023-06-10 20:45:00"
+              , "2023-07-10 20:45:00"
               ]
             actual = applyRange endTime range now startTime
         in actual `shouldBe` expected
@@ -40,8 +40,8 @@ spec = do
         let now = read "2023-03-31 12:00:00" :: LocalTime
             startTime = now
             range = GFSRange
-              { rStep = mkTimeInterval 1 0
-              , rLimit = mkTimeInterval 3 0
+              { rStep = mkTimeIntervalMonths 1
+              , rLimit = mkTimeIntervalMonths 3
               }
             endTime = read "2022-01-01 00:00:00"
             expected = fmap read
@@ -126,10 +126,10 @@ spec = do
     context "produces correct times (examples)" $ do
       it "basic example" $
         let now = read "2023-11-19 22:00:00"
-            hour = mkTimeInterval 0 1
-            day = mkTimeInterval 0 24
-            month = mkTimeInterval 1 0
-            year = mkTimeInterval 12 0
+            hour = mkTimeIntervalHours 1
+            day = mkTimeIntervalHours 24
+            month = mkTimeIntervalMonths 1
+            year = mkTimeIntervalMonths 12
             hourly = GFSRange hour day
             daily = GFSRange day month
             monthly = GFSRange month year
@@ -302,11 +302,14 @@ newtype AGFSRange = AGFSRange { unAGFSRange :: GFSRange }
 
 instance Arbitrary AGFSRange where
   arbitrary = do
-    months <- chooseBoundedIntegral (0, 10)
-    let dayInHours = 24
-    hours <- chooseBoundedIntegral (0, dayInHours)
-    let hours' = if months == 0 && hours == 0 then 1 else hours
-    let step = mkTimeInterval months hours'
+    useHours <- chooseAny
+    step <- if useHours
+      then
+        let dayInHours = 24
+        in mkTimeIntervalHours <$> chooseBoundedIntegral (1, dayInHours)
+      else
+        mkTimeIntervalMonths <$> chooseBoundedIntegral (1, 10)
+
     -- note: so that the max hours is one week; otherwise it's possible that
     -- an interval with a few months and a lot of hours is actually larger than
     -- an interval with many months and a few hours

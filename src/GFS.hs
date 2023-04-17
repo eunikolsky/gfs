@@ -9,7 +9,8 @@ module GFS
   , TimeItem(..)
   , TimeList
   , mkGFSRanges
-  , mkTimeInterval
+  , mkTimeIntervalHours
+  , mkTimeIntervalMonths
   , mkTimeList
   , unTimeList
   ) where

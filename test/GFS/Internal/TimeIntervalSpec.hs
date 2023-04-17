@@ -6,6 +6,7 @@ import GFS.Internal.ALocalTime
 
 import Control.Monad
 import Test.Hspec
+import Test.Hspec.QuickCheck
 import Test.QuickCheck
 
 spec :: Spec
@@ -16,15 +17,21 @@ spec = do
         forAll chooseIncreasingIntervals $ \(ti0, ti1) ->
           subTimeInterval ti1 t < subTimeInterval ti0 t
 
-    it "uses end days if possible (example)" $
+    it "uses end days when subtracting months (example)" $
       let t0430 = read "2023-04-30 00:00:00"
           t0531 = read "2023-05-31 00:00:00"
-          ti1month25hours = mkTimeInterval 1 25
+          tiMonth = mkTimeIntervalMonths 1
       in do
-        -- when subtracting months first: "2023-03-28 23:00:00"
-        subTimeInterval ti1month25hours t0430 `shouldBe` read "2023-03-28 23:00:00"
-        -- when subtracting months first: "2023-04-28 23:00:00"
-        subTimeInterval ti1month25hours t0531 `shouldBe` read "2023-04-29 23:00:00"
+        subTimeInterval tiMonth t0430 `shouldBe` read "2023-03-30 00:00:00"
+        subTimeInterval tiMonth t0531 `shouldBe` read "2023-04-30 00:00:00"
+
+    it "uses end days when subtracting months (example)" $
+      let t0501 = read "2023-05-01 00:00:00"
+          t0601 = read "2023-06-01 00:00:00"
+          tiDay = mkTimeIntervalHours 24
+      in do
+        subTimeInterval tiDay t0501 `shouldBe` read "2023-04-30 00:00:00"
+        subTimeInterval tiDay t0601 `shouldBe` read "2023-05-31 00:00:00"
 
   describe "Ord instance" $ do
     let chooseIncreasingInts = do
@@ -34,19 +41,20 @@ spec = do
           offset <- chooseBoundedIntegral (1, 10000)
           pure (int0, int0 + offset)
 
-    it "compares months first" $
-      property $ \hour ->
-        forAll chooseIncreasingInts $ \(month0, month1) ->
-          mkTimeInterval month0 hour < mkTimeInterval month1 hour
+    it "compares months" $
+      property . forAll chooseIncreasingInts $ \(month0, month1) ->
+        mkTimeIntervalMonths month0 < mkTimeIntervalMonths month1
 
-    it "compares hours second" $
-      property $ \(Positive month) ->
-        forAll chooseIncreasingInts $ \(hour0, hour1) ->
-          mkTimeInterval month hour0 < mkTimeInterval month hour1
+    it "compares hours" $
+      property . forAll chooseIncreasingInts $ \(hour0, hour1) ->
+        mkTimeIntervalHours hour0 < mkTimeIntervalHours hour1
+
+    prop "positive hours are always smaller than positive months" $
+      \(Positive hours) (Positive months) ->
+        mkTimeIntervalHours hours < mkTimeIntervalMonths months
 
   describe "Show instance (examples)" $ do
-    let mkTimeIntervalHours = mkTimeInterval 0
-        mkTimeIntervalDays = mkTimeIntervalHours . (* 24)
+    let mkTimeIntervalDays = mkTimeIntervalHours . (* 24)
         mkTimeIntervalWeeks = mkTimeIntervalDays . (* 7)
 
     it "shows hours under a day" $
@@ -81,8 +89,13 @@ spec = do
 
 chooseIncreasingIntervals :: Gen (TimeInterval, TimeInterval)
 chooseIncreasingIntervals = do
-  months <- chooseBoundedIntegral (0, 24)
-  hours <- chooseBoundedIntegral (0, 72)
-  (mOffset, hOffset) <- (,) <$> chooseBoundedIntegral (1, 24) <*> chooseBoundedIntegral (1, 72)
-  pure (mkTimeInterval months hours
-      , mkTimeInterval (months + mOffset) (hours + hOffset))
+  useHours <- chooseAny
+  if useHours
+    then do
+      hours <- chooseBoundedIntegral (0, 72)
+      offset <- chooseBoundedIntegral (1, 72)
+      pure (mkTimeIntervalHours hours, mkTimeIntervalHours $ hours + offset)
+    else do
+      months <- chooseBoundedIntegral (0, 24)
+      offset <- chooseBoundedIntegral (1, 24)
+      pure (mkTimeIntervalMonths months, mkTimeIntervalMonths $ months + offset)
