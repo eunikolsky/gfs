@@ -263,6 +263,13 @@ spec = do
           , "\nmissing in actual: ", show missingInActual
           ]) $ null missingInActual
 
+  describe "Show instance (examples)" $ do
+    it "shows step and limits separated by colon" $
+      let step = mkTimeIntervalHours 24
+          limit = mkTimeIntervalMonths 12
+          range = GFSRange step limit
+      in show range `shouldBe` "1d:1y"
+
 -- TODO this function repeats the production code; avoid this somehow?
 getEndTime :: GFSRange -> LocalTime -> LocalTime
 getEndTime (GFSRange _ limit) = subTimeInterval limit
