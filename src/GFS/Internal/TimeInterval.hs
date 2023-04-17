@@ -56,31 +56,20 @@ mkTimeInterval :: Months -> Hours -> TimeInterval
 mkTimeInterval months hours = TimeInterval { tiMonths = months, tiHours = hours }
 
 addTimeInterval :: TimeInterval -> LocalTime -> LocalTime
-addTimeInterval ti = addHours ti . addMonths ti
-
-addHours :: TimeInterval -> LocalTime -> LocalTime
-addHours (TimeInterval _ hours) = addLocalTime diffTime
-  where
-    diffTime :: NominalDiffTime
-    diffTime = realToFrac $ hours * secondsInHour
-
-addMonths :: TimeInterval -> LocalTime -> LocalTime
-addMonths (TimeInterval months _) time = time
-  { localDay = addGregorianMonthsClip (fromIntegral months) (localDay time)
-  }
+addTimeInterval ti = addHours 1 ti . addMonths 1 ti
 
 subTimeInterval :: TimeInterval -> LocalTime -> LocalTime
-subTimeInterval ti = subMonths ti . subHours ti
+subTimeInterval ti = addMonths (-1) ti . addHours (-1) ti
 
-subHours :: TimeInterval -> LocalTime -> LocalTime
-subHours (TimeInterval _ hours) = addLocalTime diffTime
+addHours :: Int -> TimeInterval -> LocalTime -> LocalTime
+addHours k (TimeInterval _ hours) = addLocalTime diffTime
   where
     diffTime :: NominalDiffTime
-    diffTime = realToFrac . negate $ hours * secondsInHour
+    diffTime = realToFrac $ k * hours * secondsInHour
 
-subMonths :: TimeInterval -> LocalTime -> LocalTime
-subMonths (TimeInterval months _) time = time
-  { localDay = addGregorianMonthsClip (fromIntegral $ negate months) (localDay time)
+addMonths :: Int -> TimeInterval -> LocalTime -> LocalTime
+addMonths k (TimeInterval months _) time = time
+  { localDay = addGregorianMonthsClip (fromIntegral $ k * months) (localDay time)
   }
 
 scaleTimeInterval :: Natural -> TimeInterval -> TimeInterval
