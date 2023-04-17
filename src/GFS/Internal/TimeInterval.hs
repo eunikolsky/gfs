@@ -3,14 +3,11 @@ module GFS.Internal.TimeInterval
   , mkTimeIntervalHours
   , mkTimeIntervalMonths
   , scaleTimeInterval
-  , showTimeInterval
   , subTimeInterval
   ) where
 
-import Data.Text (Text)
 import Data.Time.Calendar
 import Data.Time.LocalTime
-import qualified Data.Text as T
 import Data.Word
 
 -- 16-bit value because it should be possible to represent 4 weeks (672 hours)
@@ -82,7 +79,3 @@ scaleTimeInterval x (Months m) = Months $ m * x
 
 secondsInHour :: Num a => a
 secondsInHour = 60 * 60
-
-showTimeInterval :: TimeInterval -> Text
-showTimeInterval (Months months) = T.pack (show months) <> " months"
-showTimeInterval (Hours hours) = T.pack (show hours) <> " hours"
