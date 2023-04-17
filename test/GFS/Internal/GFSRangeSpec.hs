@@ -18,6 +18,15 @@ import qualified Data.Set as Set
 
 spec :: Spec
 spec = do
+  let hour = mkTimeIntervalHours 1
+      day = mkTimeIntervalHours 24
+      month = mkTimeIntervalMonths 1
+      year = mkTimeIntervalMonths 12
+      hourly = GFSRange hour day
+      daily = GFSRange day month
+      monthly = GFSRange month year
+      sampleRanges = mkGFSRanges hourly [daily, monthly]
+
   describe "applyRange" $ do
     context "produces correct times (examples)" $ do
       it "basic example" $
@@ -126,14 +135,6 @@ spec = do
     context "produces correct times (examples)" $ do
       it "basic example" $
         let now = read "2023-11-19 22:00:00"
-            hour = mkTimeIntervalHours 1
-            day = mkTimeIntervalHours 24
-            month = mkTimeIntervalMonths 1
-            year = mkTimeIntervalMonths 12
-            hourly = GFSRange hour day
-            daily = GFSRange day month
-            monthly = GFSRange month year
-            ranges = mkGFSRanges hourly [daily, monthly]
             expected = mkCheckpoints
               now
               -- hourly
@@ -206,7 +207,7 @@ spec = do
               , "2022-12-19 22:00:00"
               , "2022-11-19 22:00:00"
               ]
-        in applyRanges ranges now `shouldBe` expected
+        in applyRanges sampleRanges now `shouldBe` expected
 
     it "includes now" $
       property $ \(AGFSRanges ranges) (ALocalTime now) ->
@@ -263,12 +264,16 @@ spec = do
           , "\nmissing in actual: ", show missingInActual
           ]) $ null missingInActual
 
-  describe "Show instance (examples)" $ do
+  describe "Show GFSRange instance (examples)" $ do
     it "shows step and limits separated by colon" $
       let step = mkTimeIntervalHours 24
           limit = mkTimeIntervalMonths 12
           range = GFSRange step limit
       in show range `shouldBe` "1d:1y"
+
+  describe "Show GFSRanges instance (examples)" $ do
+    it "shows ranges separated by comma" $
+      show sampleRanges `shouldBe` "1h:1d,1d:1m,1m:1y"
 
 -- TODO this function repeats the production code; avoid this somehow?
 getEndTime :: GFSRange -> LocalTime -> LocalTime

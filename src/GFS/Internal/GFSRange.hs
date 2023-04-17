@@ -11,7 +11,7 @@ module GFS.Internal.GFSRange
 import GFS.Internal.Checkpoints
 import GFS.Internal.TimeInterval
 
-import Data.List (foldl', sort)
+import Data.List (foldl', intercalate, sort)
 import Data.List.NonEmpty (NonEmpty(..))
 import Data.Maybe
 import Data.Time.LocalTime
@@ -30,7 +30,9 @@ instance Show GFSRange where
 
 -- | A non-empty list of `GFSRange`s sorted by the limit.
 newtype GFSRanges = GFSRanges { unGFSRanges :: NonEmpty GFSRange }
-  deriving Show
+
+instance Show GFSRanges where
+  show (GFSRanges rs) = intercalate "," . NE.toList $ fmap show rs
 
 mkGFSRanges :: GFSRange -> [GFSRange] -> GFSRanges
 mkGFSRanges range = GFSRanges . NE.sortWith rLimit . (range :|)
