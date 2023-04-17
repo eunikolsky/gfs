@@ -19,6 +19,7 @@ type Hours = Word16
 type Months = Word16
 type Days = Word16
 type Weeks = Word16
+type Years = Word16
 
 -- | Duration of time for the GFS algorithm with the minimum resolution
 -- of one hour — this is the minimum step for the default settings,
@@ -45,13 +46,18 @@ instance Show TimeInterval where
       Just weeks -> show weeks <> "w"
       Nothing -> show days <> "d"
     Nothing -> show hours <> "h"
-  show (Months months) = show months <> "m"
+  show (Months months) = case getYears months of
+    Just years -> show years <> "y"
+    Nothing -> show months <> "m"
 
 getDays :: Hours -> Maybe Days
 getDays = getIntegralComponent 24
 
 getWeeks :: Days -> Maybe Weeks
 getWeeks = getIntegralComponent 7
+
+getYears :: Months -> Maybe Years
+getYears = getIntegralComponent 12
 
 getIntegralComponent :: Integral a => a -> a -> Maybe a
 getIntegralComponent k d = let (intComponent, rest) = d `divMod` k
