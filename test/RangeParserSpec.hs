@@ -13,15 +13,26 @@ spec = parallel $ do
     it "should fail on empty input" $
       shouldBeLeft $ parseRanges ""
 
-    prop "parses hours and days" $ \(Positive h) (Positive d) -> do
-      let input = show h <> "h:" <> show d <> "d"
-      parseRanges input `shouldParseSingleRange`
-        GFSRange (mkTimeIntervalHours h) (mkTimeIntervalDays d)
+    prop "parses a single range" $ \(InputRange input expected) -> do
+      parseRanges input `shouldParseSingleRange` expected
 
-    prop "parses weeks and months" $ \(Positive w) (Positive m) -> do
-      let input = show w <> "w:" <> show m <> "m"
-      parseRanges input `shouldParseSingleRange`
-        GFSRange (mkTimeIntervalWeeks w) (mkTimeIntervalMonths m)
+-- | An arbitrary input `GFSRange` as a string and how it should be parsed.
+data InputRange = InputRange String GFSRange
+
+instance Arbitrary InputRange where
+  arbitrary = do
+    let arbitraryInterval =
+          elements [mkTimeIntervalHours, mkTimeIntervalDays, mkTimeIntervalWeeks, mkTimeIntervalMonths, mkTimeIntervalYears]
+          <*> (getPositive <$> arbitrary)
+
+    rStep <- arbitraryInterval
+    rLimit <- arbitraryInterval
+
+    let range = GFSRange { rStep, rLimit }
+    pure $ InputRange (show range) range
+
+instance Show InputRange where
+  show (InputRange s range) = show range <> " (" <> s <> ")"
 
 shouldBeLeft :: Show b => Either a b -> Expectation
 shouldBeLeft (Left _) = pure ()

@@ -15,16 +15,21 @@ type Parser = Parsec String ()
 
 parser :: Parser GFSRanges
 parser = do
-  numStep <- read <$> many1 digit
-  stepFunc <- choice
-    [ mkTimeIntervalHours <$ char 'h'
-    , mkTimeIntervalWeeks <$ char 'w'
-    ]
+  rStep <- timeIntervalParser
   void $ char ':'
-  numLimit <- read <$> many1 digit
-  limitFunc <- choice
-    [ mkTimeIntervalDays <$ char 'd'
-    , mkTimeIntervalMonths <$ char 'm'
-    ]
-  let range = GFSRange { rStep = stepFunc numStep, rLimit = limitFunc numLimit }
+  rLimit <- timeIntervalParser
+
+  let range = GFSRange { rStep, rLimit }
   pure $ mkGFSRanges range []
+
+timeIntervalParser :: Parser TimeInterval
+timeIntervalParser = do
+  num <- read <$> many1 digit
+  mkTimeInterval <- choice
+    [ mkTimeIntervalHours <$ char 'h'
+    , mkTimeIntervalDays <$ char 'd'
+    , mkTimeIntervalWeeks <$ char 'w'
+    , mkTimeIntervalMonths <$ char 'm'
+    , mkTimeIntervalYears <$ char 'y'
+    ]
+  pure $ mkTimeInterval num
