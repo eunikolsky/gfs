@@ -33,6 +33,7 @@ library
       GFS.Internal.TimeInterval
       GFS.Internal.TimeList
       InputParser
+      RangeParser
   other-modules:
       Paths_gfs
   hs-source-dirs:
@@ -91,6 +92,7 @@ test-suite gfs-test
       GFS.Internal.TimeListSpec
       GFSSpec
       InputParserSpec
+      RangeParserSpec
       Paths_gfs
   hs-source-dirs:
       test
