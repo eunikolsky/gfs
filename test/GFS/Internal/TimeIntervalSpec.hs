@@ -28,7 +28,7 @@ spec = do
     it "uses end days when subtracting months (example)" $
       let t0501 = read "2023-05-01 00:00:00"
           t0601 = read "2023-06-01 00:00:00"
-          tiDay = mkTimeIntervalHours 24
+          tiDay = mkTimeIntervalDays 1
       in do
         subTimeInterval tiDay t0501 `shouldBe` read "2023-04-30 00:00:00"
         subTimeInterval tiDay t0601 `shouldBe` read "2023-05-31 00:00:00"
@@ -54,10 +54,6 @@ spec = do
         mkTimeIntervalHours hours < mkTimeIntervalMonths months
 
   describe "Show instance (examples)" $ do
-    let mkTimeIntervalDays = mkTimeIntervalHours . (* 24)
-        mkTimeIntervalWeeks = mkTimeIntervalDays . (* 7)
-        mkTimeIntervalYears = mkTimeIntervalMonths . (* 12)
-
     it "shows hours under a day" $
       -- this looping is done inside the test so that it doesn't produce a lot
       -- of test case output

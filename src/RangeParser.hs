@@ -18,12 +18,12 @@ parser = do
   numStep <- read <$> many1 digit
   stepFunc <- choice
     [ mkTimeIntervalHours <$ char 'h'
-    , mkTimeIntervalHours . (* 7) . (* 24) <$ char 'w'
+    , mkTimeIntervalWeeks <$ char 'w'
     ]
   void $ char ':'
   numLimit <- read <$> many1 digit
   limitFunc <- choice
-    [ mkTimeIntervalHours . (* 24) <$ char 'd'
+    [ mkTimeIntervalDays <$ char 'd'
     , mkTimeIntervalMonths <$ char 'm'
     ]
   let range = GFSRange { rStep = stepFunc numStep, rLimit = limitFunc numLimit }

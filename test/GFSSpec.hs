@@ -16,9 +16,9 @@ spec =
   describe "gfsRemove" $ do
     let now = read "2023-11-19 22:00:00"
         hour = mkTimeIntervalHours 1
-        day = mkTimeIntervalHours 24
+        day = mkTimeIntervalDays 1
         month = mkTimeIntervalMonths 1
-        year = mkTimeIntervalMonths 12
+        year = mkTimeIntervalYears 1
         hourly = GFSRange hour day
         daily = GFSRange day month
         monthly = GFSRange month year

@@ -9,9 +9,6 @@ import Test.QuickCheck
 
 spec :: Spec
 spec = parallel $ do
-  let mkTimeIntervalDays = mkTimeIntervalHours . (* 24)
-      mkTimeIntervalWeeks = mkTimeIntervalDays . (* 7)
-
   describe "parseRanges" $ do
     it "should fail on empty input" $
       shouldBeLeft $ parseRanges ""

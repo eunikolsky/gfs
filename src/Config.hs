@@ -4,7 +4,7 @@ module Config
   , defaultRanges
   ) where
 
-import GFS (GFSRange(..), GFSRanges, TimeInterval, mkGFSRanges, mkTimeIntervalHours, mkTimeIntervalMonths)
+import GFS
 
 import Data.Text (Text)
 import Prelude hiding (until)
@@ -37,13 +37,12 @@ defaultRanges = mkGFSRanges hourlyForDay
     yearlyUntilThirtyTwoYears = year `until` years 32
 
     hour = mkTimeIntervalHours 1
-    day = days 1
-    week = days 7
+    day = mkTimeIntervalDays 1
+    week = mkTimeIntervalWeeks 1
     month = mkTimeIntervalMonths 1
-    year = years 1
+    year = mkTimeIntervalYears 1
 
-    days = mkTimeIntervalHours . (* 24)
-    years = mkTimeIntervalMonths . (* 12)
+    years = mkTimeIntervalYears
 
 until :: TimeInterval -> TimeInterval -> GFSRange
 until = GFSRange
