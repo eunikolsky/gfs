@@ -51,6 +51,7 @@ library
       base >=4.7 && <5
     , monad-logger
     , mtl
+    , parsec
     , text
     , time
   default-language: Haskell2010

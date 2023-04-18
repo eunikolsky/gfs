@@ -4,6 +4,8 @@ import GFS.Internal.GFSRange
 import GFS.Internal.TimeInterval
 import RangeParser
 import Test.Hspec
+import Test.Hspec.QuickCheck
+import Test.QuickCheck
 
 spec :: Spec
 spec = parallel $ do
@@ -13,9 +15,10 @@ spec = parallel $ do
     it "should fail on empty input" $
       shouldBeLeft $ parseRanges ""
 
-    it "parses hours and days" $
-      parseRanges "1h:1d" `shouldParseSingleRange`
-        GFSRange (mkTimeIntervalHours 1) (mkTimeIntervalDays 1)
+    prop "parses hours and days" $ \(Positive h) (Positive d) -> do
+      let input = show h <> "h:" <> show d <> "d"
+      parseRanges input `shouldParseSingleRange`
+        GFSRange (mkTimeIntervalHours h) (mkTimeIntervalDays d)
 
 shouldBeLeft :: Show b => Either a b -> Expectation
 shouldBeLeft (Left _) = pure ()
