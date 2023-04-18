@@ -10,6 +10,7 @@ import Test.QuickCheck
 spec :: Spec
 spec = parallel $ do
   let mkTimeIntervalDays = mkTimeIntervalHours . (* 24)
+      mkTimeIntervalWeeks = mkTimeIntervalDays . (* 7)
 
   describe "parseRanges" $ do
     it "should fail on empty input" $
@@ -19,6 +20,11 @@ spec = parallel $ do
       let input = show h <> "h:" <> show d <> "d"
       parseRanges input `shouldParseSingleRange`
         GFSRange (mkTimeIntervalHours h) (mkTimeIntervalDays d)
+
+    prop "parses weeks and months" $ \(Positive w) (Positive m) -> do
+      let input = show w <> "w:" <> show m <> "m"
+      parseRanges input `shouldParseSingleRange`
+        GFSRange (mkTimeIntervalWeeks w) (mkTimeIntervalMonths m)
 
 shouldBeLeft :: Show b => Either a b -> Expectation
 shouldBeLeft (Left _) = pure ()
