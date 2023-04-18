@@ -6,8 +6,9 @@ module OptParse
 
 import Config (Action(..), Config(..), defaultRanges)
 import InputParser (FormatMatch(..))
+import RangeParser (parseRanges)
 
-import Options.Applicative ((<|>), Parser, flag, flag', help, long, short, strOption, switch)
+import Options.Applicative ((<|>), Parser, eitherReader, flag, flag', help, long, option, short, showDefault, strOption, switch, value)
 
 actionParser :: Parser Action
 actionParser
@@ -20,6 +21,14 @@ configParser = do
     ( long "format"
     <> short 'f'
     <> help "Time format to parse input strings"
+    )
+
+  ranges <- option (eitherReader parseRanges)
+    ( long "ranges"
+    <> short 'r'
+    <> help "GFS ranges"
+    <> value defaultRanges
+    <> showDefault
     )
 
   verbose <- switch
@@ -35,7 +44,7 @@ configParser = do
 
   pure $ Config
     { cfgTimeFormat = timeFormat
-    , cfgGFSRanges = defaultRanges
+    , cfgGFSRanges = ranges
     , cfgVerbose = verbose
     , cfgFormatMatch = formatMatch
     }
