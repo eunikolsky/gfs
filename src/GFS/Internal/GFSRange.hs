@@ -24,12 +24,14 @@ data GFSRange = GFSRange
   { rStep :: !TimeInterval
   , rLimit :: !TimeInterval
   }
+  deriving Eq
 
 instance Show GFSRange where
   show (GFSRange step limit) = show step <> ":" <> show limit
 
 -- | A non-empty list of `GFSRange`s sorted by the limit.
 newtype GFSRanges = GFSRanges { unGFSRanges :: NonEmpty GFSRange }
+  deriving Eq
 
 instance Show GFSRanges where
   show (GFSRanges rs) = intercalate "," . NE.toList $ fmap show rs
