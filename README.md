@@ -6,7 +6,7 @@ If you make backups of your data regularly (and you should), you'll get a lot of
 
 `gfs` is a small command-line program to implement such an algorithm; it works as a filter reading backup names with dates from `stdin` and printing which of them need to be removed to `stdout`. It does not know how to list backups from your system and how to remove them; your commands should do that, giving you more freedom to do exactly what you need.
 
-For now, the cleanup ranges for the algorithm are fixed, that is it will leave:
+The default cleanup ranges for the algorithm will leave:
 * one backup every hour for a day (24 hours);
 * one backup every day for a month;
 * one backup every week for a year;
@@ -89,6 +89,28 @@ host0 2023-01-10-200000
 This is useful e.g. when your backup names include variable data (an identifier) and you need that data to remove backups.
 
 Note: the prefix shouldn't end with a digit and the suffix shouldn't start with a digit because that may confuse the time parser. For example, `foo12023-02-01-150000` might be parsed as year `12023`.
+
+### Customizable ranges
+
+You can use the `-r`/`--ranges` option to specify the ranges that you need. The value is a string where each range is the step followed by a colon `:` followed by the limit, and the ranges are separated with a comma `,`. The step defines the sequential time intervals where only one backup will be left, and the limit is where to stop this range. The default ranges are `1h:1d,1d:1m,1w:1y,1m:4y,1y:32y`, as described above.
+
+You can use these units from the time intervals:
+
+* `h` — hour, the minimal unit, and its derivatives:
+    * `d` — day, equal to 24 hours;
+    * `w` — week, equal to 7 days;
+* `m` — calendar month, isn't equal to a fixed number of days, and its derivative:
+    * `y` — year, equal to 12 months.
+
+For example, `-r 1h:1d` says, "keep one backup every hour for a day", anything older will be deleted. Or if you want multiple ranges:
+
+* keep one backup every 4 hours for a week: `4h:1w`;
+* (for backups older than a week:) keep one backup every 3 days for two months: `3d:2m`;
+* (for backups older than two months:) keep one backup every 6 months for 5 years: `6m:5y`,
+
+so the program option would be `-r 4h:1w,3d:2m,6m:5y`.
+
+Note: the provided ranges are automatically sorted from smaller to bigger limit, which is the number after a colon `:`. That is, `2m:2y,1d:1w` will be understood as `1d:1w,2m:2y`.
 
 ## Examples
 
@@ -225,7 +247,6 @@ done
 ## TODO
 
 * Ignore unparseable strings instead of stopping with an error.
-* User-configurable GFS ranges.
 * Use a custom "now" time if provided (for debugging).
 
 ## Building
