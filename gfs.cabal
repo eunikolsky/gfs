@@ -5,7 +5,7 @@ cabal-version: 1.12
 -- see: https://github.com/sol/hpack
 
 name:           gfs
-version:        0.2.1
+version:        0.3.0
 description:    Please see the README on GitHub at <https://github.com/eunikolsky/gfs#readme>
 homepage:       https://github.com/eunikolsky/gfs#readme
 bug-reports:    https://github.com/eunikolsky/gfs/issues
@@ -33,6 +33,7 @@ library
       GFS.Internal.TimeInterval
       GFS.Internal.TimeList
       InputParser
+      RangeParser
   other-modules:
       Paths_gfs
   hs-source-dirs:
@@ -50,6 +51,7 @@ library
       base >=4.7 && <5
     , monad-logger
     , mtl
+    , parsec
     , text
     , time
   default-language: Haskell2010
@@ -91,6 +93,7 @@ test-suite gfs-test
       GFS.Internal.TimeListSpec
       GFSSpec
       InputParserSpec
+      RangeParserSpec
       Paths_gfs
   hs-source-dirs:
       test

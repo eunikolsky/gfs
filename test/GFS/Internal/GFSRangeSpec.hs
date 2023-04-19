@@ -19,9 +19,9 @@ import qualified Data.Set as Set
 spec :: Spec
 spec = do
   let hour = mkTimeIntervalHours 1
-      day = mkTimeIntervalHours 24
+      day = mkTimeIntervalDays 1
       month = mkTimeIntervalMonths 1
-      year = mkTimeIntervalMonths 12
+      year = mkTimeIntervalYears 1
       hourly = GFSRange hour day
       daily = GFSRange day month
       monthly = GFSRange month year
@@ -266,8 +266,8 @@ spec = do
 
   describe "Show GFSRange instance (examples)" $ do
     it "shows step and limits separated by colon" $
-      let step = mkTimeIntervalHours 24
-          limit = mkTimeIntervalMonths 12
+      let step = mkTimeIntervalDays 1
+          limit = mkTimeIntervalYears 1
           range = GFSRange step limit
       in show range `shouldBe` "1d:1y"
 

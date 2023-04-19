@@ -4,6 +4,11 @@ module GFS.Internal.TimeInterval
   , mkTimeIntervalMonths
   , scaleTimeInterval
   , subTimeInterval
+
+  -- * convenience constructors
+  , mkTimeIntervalDays
+  , mkTimeIntervalWeeks
+  , mkTimeIntervalYears
   ) where
 
 import Data.Time.Calendar
@@ -48,13 +53,13 @@ instance Show TimeInterval where
     Nothing -> show months <> "m"
 
 getDays :: Hours -> Maybe Days
-getDays = getIntegralComponent 24
+getDays = getIntegralComponent hoursInDay
 
 getWeeks :: Days -> Maybe Weeks
-getWeeks = getIntegralComponent 7
+getWeeks = getIntegralComponent daysInWeek
 
 getYears :: Months -> Maybe Years
-getYears = getIntegralComponent 12
+getYears = getIntegralComponent monthsInYear
 
 getIntegralComponent :: Integral a => a -> a -> Maybe a
 getIntegralComponent k d = let (intComponent, rest) = d `divMod` k
@@ -65,6 +70,15 @@ mkTimeIntervalHours = Hours
 
 mkTimeIntervalMonths :: Months -> TimeInterval
 mkTimeIntervalMonths = Months
+
+mkTimeIntervalDays :: Days -> TimeInterval
+mkTimeIntervalDays = mkTimeIntervalHours . (* hoursInDay)
+
+mkTimeIntervalWeeks :: Weeks -> TimeInterval
+mkTimeIntervalWeeks = mkTimeIntervalDays . (* daysInWeek)
+
+mkTimeIntervalYears :: Years -> TimeInterval
+mkTimeIntervalYears = mkTimeIntervalMonths . (* monthsInYear)
 
 subTimeInterval :: TimeInterval -> LocalTime -> LocalTime
 subTimeInterval (Hours hours) time = addLocalTime diffTime time
@@ -79,3 +93,12 @@ scaleTimeInterval x (Months m) = Months $ m * x
 
 secondsInHour :: Num a => a
 secondsInHour = 60 * 60
+
+hoursInDay :: Hours
+hoursInDay = 24
+
+daysInWeek :: Days
+daysInWeek = 7
+
+monthsInYear :: Months
+monthsInYear = 12
