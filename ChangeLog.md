@@ -1,5 +1,9 @@
 # Changelog for `gfs`
 
+## 0.3.0
+
+* Allow to customize the GFS ranges with the `--ranges` option.
+
 ## 0.2.1
 
 * Show GFS ranges in a more compact form in the debug output.
