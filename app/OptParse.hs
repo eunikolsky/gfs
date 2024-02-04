@@ -5,10 +5,10 @@ module OptParse
   ) where
 
 import Config (Action(..), Config(..), defaultRanges)
-import InputParser (FormatMatch(..))
+import InputParser (FormatMatch(..), parseNow)
 import RangeParser (parseRanges)
 
-import Options.Applicative ((<|>), Parser, eitherReader, flag, flag', help, long, option, short, showDefault, strOption, switch, value)
+import Options.Applicative ((<|>), Parser, eitherReader, flag, flag', help, long, maybeReader, option, optional, short, showDefault, strOption, switch, value)
 
 actionParser :: Parser Action
 actionParser
@@ -42,9 +42,15 @@ configParser = do
     <> help "Search for time inside input strings (might be slower)"
     )
 
+  now <- optional $ option (maybeReader parseNow)
+    ( long "now"
+    <> help "Override \"now\", in the ISO-8601 format (yyyy-MM-ddTHH:mm:ss)"
+    )
+
   pure $ Config
     { cfgTimeFormat = timeFormat
     , cfgGFSRanges = ranges
     , cfgVerbose = verbose
     , cfgFormatMatch = formatMatch
+    , cfgNow = now
     }

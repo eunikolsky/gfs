@@ -35,7 +35,7 @@ printRemoveTimes config = runLogging . (>>= logError) . runExceptT $ do
   inputStrings <- liftIO $ T.lines <$> TIO.getContents
   inputTimes <- fmap mkTimeList . ExceptT . pure $
     parseTimes (cfgFormatMatch config) (cfgTimeFormat config) inputStrings
-  now <- liftIO getLocalTime
+  now <- maybe (liftIO getLocalTime) pure $ cfgNow config
   removeTimes <- unTimeList <$> gfsRemove (cfgGFSRanges config) now inputTimes
   let removeItems = itStr <$> removeTimes
   liftIO $ forM_ removeItems TIO.putStrLn
