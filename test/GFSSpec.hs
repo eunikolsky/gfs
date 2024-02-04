@@ -60,7 +60,7 @@ spec =
           , "2023-12-31 23:59:59"
           ]
 
-    context "removes correct times (examples)" $
+    context "removes correct times (examples)" $ do
       it "basic example" $ do
         -- created from `times` by keeping all in "too old", removing the first
         -- time on every line after that, removing the newest time before now,
@@ -90,6 +90,22 @@ spec =
               ]
 
         runNoLoggingT (gfsRemove ranges now times) `shouldBe` Identity expectedRemoved
+
+      it "deals with day 31 correctly" $ do
+        let times31 = mkTimeList $ fmap (TimeItem "" . read)
+              -- [2022-12-19; 2023-01-19)
+              [ "2022-12-20 07:04:00"
+              , "2022-12-23 16:00:00"
+              , "2022-12-31 23:10:00"
+
+              , "2023-11-19 20:00:00"
+              ]
+            expectedRemoved = mkTimeList $ fmap (TimeItem "" . read)
+              [ "2022-12-23 16:00:00"
+              , "2022-12-31 23:10:00"
+              ]
+
+        runNoLoggingT (gfsRemove ranges now times31) `shouldBe` Identity expectedRemoved
 
     it "shifting now by month keeps \"most\" of old data (example)" $ do
       -- I think it's more obvious for a human to see what's left, not what's removed,

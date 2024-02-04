@@ -1,6 +1,6 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.35.1.
+-- This file has been generated from package.yaml by hpack version 0.36.0.
 --
 -- see: https://github.com/sol/hpack
 
@@ -90,7 +90,6 @@ test-suite gfs-test
       GFS.Internal.GFSRangeSpec
       GFS.Internal.GFSSpec
       GFS.Internal.TimeIntervalSpec
-      GFS.Internal.TimeListSpec
       GFSSpec
       InputParserSpec
       RangeParserSpec

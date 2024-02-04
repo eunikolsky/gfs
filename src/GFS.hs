@@ -37,4 +37,4 @@ gfsRemove ranges now times = do
     ]
   let checkpoints = applyRanges ranges now
   logDebugN $ "checkpoints: " <> (T.pack . intercalate ", " . NE.toList . fmap show . unCheckpoints $ checkpoints)
-  pure . keepNewestTime $ Internal.gfsRemove checkpoints times
+  pure $ Internal.gfsRemove checkpoints times
