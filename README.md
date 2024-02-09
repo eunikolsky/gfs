@@ -7,6 +7,7 @@ If you make backups of your data regularly (and you should), you'll get a lot of
 `gfs` is a small command-line program to implement such an algorithm; it works as a filter reading backup names with dates from `stdin` and printing which of them need to be removed to `stdout`. It does not know how to list backups from your system and how to remove them; your commands should do that, giving you more freedom to do exactly what you need.
 
 The default cleanup ranges for the algorithm will leave:
+* one backup between today's midnight and now;
 * one backup every hour for a day (24 hours);
 * one backup every day for a month;
 * one backup every week for a year;
@@ -17,7 +18,7 @@ And there are a few extra rules:
 * The newest backup (before "now") is always kept.
 * All backups that are newer than "now" are always kept (even though it shouldn't happen in real life).
 
-An example with times, assuming "now" (the system time when running the command) is "2023-04-02 10:50:00":
+An example with times, assuming "now" (the system time when running the command) is "2023-04-02 10:50:00" (or using the `--now` option to set "now" for `gfs`), the program prints six times to be removed:
 
 ```bash
 $ echo '2021-12-04-000000
@@ -28,38 +29,18 @@ $ echo '2021-12-04-000000
 2023-01-10-220000
 2023-02-06-005500
 2023-02-06-005800
-2023-02-06-005900' | gfs -f '%Y-%m-%d-%H%M%S'
+2023-04-02-070000
+2023-04-02-071500
+2023-04-02-080000' | gfs -f '%Y-%m-%d-%H%M%S' --now 2023-04-02T10:50:00
 2021-12-10-000000
 2021-12-31-083000
 2023-01-10-200000
 2023-01-10-220000
 2023-02-06-005800
+2023-04-02-071500
 ```
 
-Here it prints three times to be removed. The reason is explained with the input times:
-
-```
-# monthly because the dates are more than a year away from now:
-2021-12-04-000000  # only one time during the month of [2021-11-06 08:00:00; 2021-12-06 08:00:00],
-                  # so it is kept
-## these two are within the same month of [2021-12-06 08:00:00; 2022-01-06 08:00:00]:
-2021-12-10-000000  # thus the older one is kept
-2021-12-31-083000  # <<< while the other one is removed
-
-# daily because the dates are within a month from now:
-## these are within the same day of [2023-01-10 08:00:00; 2023-01-11 08:00:00]:
-2023-01-10-150010  # thus the older one is kept
-2023-01-10-200000  # <<< while all the other ones…
-2023-01-10-220000  # <<< …are removed
-
-# hourly because the dates are within 24 hours from now:
-## these are within the same hour of [2023-02-06 00:00:00; 2023-02-06 01:00:00]:
-2023-02-06-005500  # thus the older one is kept
-2023-02-06-005800  # <<< while all the other ones are removed
-2023-02-06-005900  # except for the newest time before "now" 2023-02-06 08:00:00
-```
-
-Note that the program uses calendar-based calculations for month differences clipping the result to valid days. This behavior is visible at the end of some months: `2023-05-31 - 1 month = 2023-04-30`. Due to this, more days are included in this 1 month's interval than usual, and you can see more times to be removed if you run the program at the end of a month.
+The program uses calendar-based calculations for month differences clipping the result to valid days. This behavior is visible at the end of some months: `2023-05-31 - 1 month = 2023-04-30`. Due to this, more days are included in this 1 month's interval than usual, and you can see more times to be removed if you run the program at the end of a month.
 
 The program is inspired by [`tarsnapper`](https://github.com/miracle2k/tarsnapper). The difference is `tarsnapper` works only with `tarsnap` and it has other functionality in addition to expiring backups.
 
@@ -111,6 +92,8 @@ For example, `-r 1h:1d` says, "keep one backup every hour for a day", anything o
 so the program option would be `-r 4h:1w,3d:2m,6m:5y`.
 
 Note: the provided ranges are automatically sorted from smaller to bigger limit, which is the number after a colon `:`. That is, `2m:2y,1d:1w` will be understood as `1d:1w,2m:2y`.
+
+Note: the ranges are applied starting at today's midnight, not now. This makes the result less surprising, for example, if you make a daily backup every day, but at different times, and you want to keep one backup per day for a week, this will allow that; if the ranges were applied starting at now, then a daily backup could be removed depending on the time of day when you run `gfs` — it would technically be correct due to 2 backups during one 24-hour period, but would be unexpected.
 
 ## Examples
 
@@ -247,7 +230,6 @@ done
 ## TODO
 
 * Ignore unparseable strings instead of stopping with an error.
-* Use a custom "now" time if provided (for debugging).
 
 ## Building
 
