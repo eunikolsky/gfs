@@ -2,7 +2,6 @@ module GFS.Internal.TimeList
   ( TimeItem(..)
   , TimeList
   , mkTimeList
-  , keepNewestTime
   , unTimeList
   ) where
 
@@ -26,8 +25,3 @@ newtype TimeList = TimeList { unTimeList :: [TimeItem] }
 -- | Smart constructor for `TimeList` — sorts the input list if necessary.
 mkTimeList :: [TimeItem] -> TimeList
 mkTimeList = TimeList . sortOn itTime
-
-keepNewestTime :: TimeList -> TimeList
-keepNewestTime times = case times of
-  TimeList [] -> times
-  xs -> TimeList . init . unTimeList $ xs

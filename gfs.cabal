@@ -1,11 +1,11 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.35.1.
+-- This file has been generated from package.yaml by hpack version 0.36.0.
 --
 -- see: https://github.com/sol/hpack
 
 name:           gfs
-version:        0.3.0
+version:        0.4.0
 description:    Please see the README on GitHub at <https://github.com/eunikolsky/gfs#readme>
 homepage:       https://github.com/eunikolsky/gfs#readme
 bug-reports:    https://github.com/eunikolsky/gfs/issues
@@ -90,7 +90,6 @@ test-suite gfs-test
       GFS.Internal.GFSRangeSpec
       GFS.Internal.GFSSpec
       GFS.Internal.TimeIntervalSpec
-      GFS.Internal.TimeListSpec
       GFSSpec
       InputParserSpec
       RangeParserSpec

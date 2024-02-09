@@ -27,29 +27,30 @@ spec =
 
         times = mkTimeList $ fmap ((TimeItem "") . read)
           -- too old
-          [ "2020-01-01 03:00:23", "2022-11-19 00:00:00"
+          [ "2020-01-01 03:00:23", "2022-11-18 23:59:59"
 
           -- monthly:
           -- in the oldest month, including the oldest possible time to keep
-          , "2022-11-19 22:00:00", "2022-11-20 00:00:00", "2022-12-16 14:53:21"
+          , "2022-11-19 00:00:00", "2022-11-20 00:00:00", "2022-12-16 14:53:21"
           -- one month before the oldest
-          , "2022-12-19 22:00:00", "2022-12-31 23:45:00"
+          , "2022-12-19 00:00:00", "2022-12-31 23:45:00"
           -- the newest of the months
           , "2023-09-18 20:33:01"
 
           -- daily:
           , "2023-10-19 23:00:00", "2023-10-20 12:00:00"
-          , "2023-10-20 22:00:00", "2023-10-20 22:04:00", "2023-10-21 05:04:00", "2023-10-21 21:04:00"
+          , "2023-10-20 00:00:00", "2023-10-20 22:04:00"
+          , "2023-10-21 05:04:00", "2023-10-21 21:04:00"
           , "2023-11-08 16:00:00"
           , "2023-11-17 16:00:00", "2023-11-17 21:23:00"
 
           -- hourly:
+          , "2023-11-18 03:07:29"
+          , "2023-11-18 09:08:00", "2023-11-18 09:18:00", "2023-11-18 09:58:08"
           , "2023-11-18 22:00:00", "2023-11-18 22:55:00"
           , "2023-11-18 23:00:01", "2023-11-18 23:13:00"
-          , "2023-11-19 03:07:29"
-          , "2023-11-19 09:08:00", "2023-11-19 09:18:00", "2023-11-19 09:58:08"
-          -- the newest hour before now
-          , "2023-11-19 21:43:00", "2023-11-19 21:47:00"
+          -- until now's midnight:
+          , "2023-11-19 05:05:00", "2023-11-19 21:43:00", "2023-11-19 21:47:00"
           -- just before now
           , "2023-11-19 21:59:59"
 
@@ -59,50 +60,68 @@ spec =
           , "2023-12-31 23:59:59"
           ]
 
-    context "removes correct times (examples)" $
+    context "removes correct times (examples)" $ do
       it "basic example" $ do
         -- created from `times` by keeping all in "too old", removing the first
         -- time on every line after that, removing the newest time before now,
         -- and removing all "newer than now"
         let expectedRemoved = mkTimeList $ fmap ((TimeItem "") . read)
               -- too old
-              [ "2020-01-01 03:00:23", "2022-11-19 00:00:00"
+              [ "2020-01-01 03:00:23", "2022-11-18 23:59:59"
 
               -- monthly:
+              -- in the oldest month, including the oldest possible time to keep
               , "2022-11-20 00:00:00", "2022-12-16 14:53:21"
               -- one month before the oldest
               , "2022-12-31 23:45:00"
 
               -- daily:
               , "2023-10-20 12:00:00"
-              , "2023-10-20 22:04:00", "2023-10-21 05:04:00", "2023-10-21 21:04:00"
+              , "2023-10-20 22:04:00"
+              , "2023-10-21 21:04:00"
               , "2023-11-17 21:23:00"
 
               -- hourly:
+              , "2023-11-18 09:18:00", "2023-11-18 09:58:08"
               , "2023-11-18 22:55:00"
               , "2023-11-18 23:13:00"
-              , "2023-11-19 09:18:00", "2023-11-19 09:58:08"
-              -- the newest hour before now
-              , "2023-11-19 21:47:00"
+              -- until now's midnight:
+              , "2023-11-19 21:43:00", "2023-11-19 21:47:00"
               ]
 
         runNoLoggingT (gfsRemove ranges now times) `shouldBe` Identity expectedRemoved
+
+      it "deals with day 31 correctly" $ do
+        let times31 = mkTimeList $ fmap (TimeItem "" . read)
+              -- [2022-12-19; 2023-01-19)
+              [ "2022-12-20 07:04:00"
+              , "2022-12-23 16:00:00"
+              , "2022-12-31 23:10:00"
+
+              , "2023-11-19 20:00:00"
+              ]
+            expectedRemoved = mkTimeList $ fmap (TimeItem "" . read)
+              [ "2022-12-23 16:00:00"
+              , "2022-12-31 23:10:00"
+              ]
+
+        runNoLoggingT (gfsRemove ranges now times31) `shouldBe` Identity expectedRemoved
 
     it "shifting now by month keeps \"most\" of old data (example)" $ do
       -- I think it's more obvious for a human to see what's left, not what's removed,
       -- after two cleanups in this test
       let shiftedNowByMonth = read "2023-12-19 22:00:00"
           expectedLeft = mkTimeList $ fmap ((TimeItem "") . read)
-            -- monthly [2022-12-19 22:00:00; 2023-11-19 22:00:00):
-            [ "2022-12-19 22:00:00"
+            -- monthly [2022-12-19 00:00:00; 2023-11-19 00:00:00):
+            [ "2022-12-19 00:00:00"
             , "2023-09-18 20:33:01"
             , "2023-10-19 23:00:00"
 
-            -- daily [2023-11-19 22:00:00; 2023-12-18 22:00:00):
-            , "2023-11-19 23:45:45"
+            -- daily [2023-11-19 00:00:00; 2023-12-18 00:00:00):
+            , "2023-11-19 05:05:00"
             , "2023-12-01 01:45:45"
 
-            -- hourly [2023-12-18 22:00:00; 2023-12-19 22:00:00):
+            -- hourly [2023-12-18 00:00:00; 2023-12-19 00:00:00):
             , "2023-12-19 02:00:00"
             , "2023-12-19 02:15:00" -- the newest before now
 

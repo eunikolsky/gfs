@@ -8,13 +8,11 @@ import GFS.Internal.ALocalTime
 
 import Control.Exception (assert)
 import Data.List (sort)
-import Data.List.NonEmpty (NonEmpty(..))
 import Data.Maybe
 import Data.Time.LocalTime
 import Test.Hspec
 import Test.QuickCheck hiding (scale)
 import qualified Data.List.NonEmpty as NE
-import qualified Data.Set as Set
 
 spec :: Spec
 spec = do
@@ -137,75 +135,77 @@ spec = do
         let now = read "2023-11-19 22:00:00"
             expected = mkCheckpoints
               now
-              -- hourly
               $ fmap read
-              [ "2023-11-19 21:00:00"
-              , "2023-11-19 20:00:00"
-              , "2023-11-19 19:00:00"
-              , "2023-11-19 18:00:00"
-              , "2023-11-19 17:00:00"
-              , "2023-11-19 16:00:00"
-              , "2023-11-19 15:00:00"
-              , "2023-11-19 14:00:00"
-              , "2023-11-19 13:00:00"
-              , "2023-11-19 12:00:00"
-              , "2023-11-19 11:00:00"
-              , "2023-11-19 10:00:00"
-              , "2023-11-19 09:00:00"
-              , "2023-11-19 08:00:00"
-              , "2023-11-19 07:00:00"
-              , "2023-11-19 06:00:00"
-              , "2023-11-19 05:00:00"
-              , "2023-11-19 04:00:00"
-              , "2023-11-19 03:00:00"
-              , "2023-11-19 02:00:00"
-              , "2023-11-19 01:00:00"
-              , "2023-11-19 00:00:00"
+              -- now's midnight
+              [ "2023-11-19 00:00:00"
+              -- hourly
               , "2023-11-18 23:00:00"
               , "2023-11-18 22:00:00"
+              , "2023-11-18 21:00:00"
+              , "2023-11-18 20:00:00"
+              , "2023-11-18 19:00:00"
+              , "2023-11-18 18:00:00"
+              , "2023-11-18 17:00:00"
+              , "2023-11-18 16:00:00"
+              , "2023-11-18 15:00:00"
+              , "2023-11-18 14:00:00"
+              , "2023-11-18 13:00:00"
+              , "2023-11-18 12:00:00"
+              , "2023-11-18 11:00:00"
+              , "2023-11-18 10:00:00"
+              , "2023-11-18 09:00:00"
+              , "2023-11-18 08:00:00"
+              , "2023-11-18 07:00:00"
+              , "2023-11-18 06:00:00"
+              , "2023-11-18 05:00:00"
+              , "2023-11-18 04:00:00"
+              , "2023-11-18 03:00:00"
+              , "2023-11-18 02:00:00"
+              , "2023-11-18 01:00:00"
+              , "2023-11-18 00:00:00"
               -- daily
-              , "2023-11-17 22:00:00"
-              , "2023-11-16 22:00:00"
-              , "2023-11-15 22:00:00"
-              , "2023-11-14 22:00:00"
-              , "2023-11-13 22:00:00"
-              , "2023-11-12 22:00:00"
-              , "2023-11-11 22:00:00"
-              , "2023-11-10 22:00:00"
-              , "2023-11-09 22:00:00"
-              , "2023-11-08 22:00:00"
-              , "2023-11-07 22:00:00"
-              , "2023-11-06 22:00:00"
-              , "2023-11-05 22:00:00"
-              , "2023-11-04 22:00:00"
-              , "2023-11-03 22:00:00"
-              , "2023-11-02 22:00:00"
-              , "2023-11-01 22:00:00"
-              , "2023-10-31 22:00:00"
-              , "2023-10-30 22:00:00"
-              , "2023-10-29 22:00:00"
-              , "2023-10-28 22:00:00"
-              , "2023-10-27 22:00:00"
-              , "2023-10-26 22:00:00"
-              , "2023-10-25 22:00:00"
-              , "2023-10-24 22:00:00"
-              , "2023-10-23 22:00:00"
-              , "2023-10-22 22:00:00"
-              , "2023-10-21 22:00:00"
-              , "2023-10-20 22:00:00"
-              , "2023-10-19 22:00:00"
+              , "2023-11-17 00:00:00"
+              , "2023-11-16 00:00:00"
+              , "2023-11-15 00:00:00"
+              , "2023-11-14 00:00:00"
+              , "2023-11-13 00:00:00"
+              , "2023-11-12 00:00:00"
+              , "2023-11-11 00:00:00"
+              , "2023-11-10 00:00:00"
+              , "2023-11-09 00:00:00"
+              , "2023-11-08 00:00:00"
+              , "2023-11-07 00:00:00"
+              , "2023-11-06 00:00:00"
+              , "2023-11-05 00:00:00"
+              , "2023-11-04 00:00:00"
+              , "2023-11-03 00:00:00"
+              , "2023-11-02 00:00:00"
+              , "2023-11-01 00:00:00"
+              , "2023-10-31 00:00:00"
+              , "2023-10-30 00:00:00"
+              , "2023-10-29 00:00:00"
+              , "2023-10-28 00:00:00"
+              , "2023-10-27 00:00:00"
+              , "2023-10-26 00:00:00"
+              , "2023-10-25 00:00:00"
+              , "2023-10-24 00:00:00"
+              , "2023-10-23 00:00:00"
+              , "2023-10-22 00:00:00"
+              , "2023-10-21 00:00:00"
+              , "2023-10-20 00:00:00"
+              , "2023-10-19 00:00:00"
               -- monthly
-              , "2023-09-19 22:00:00"
-              , "2023-08-19 22:00:00"
-              , "2023-07-19 22:00:00"
-              , "2023-06-19 22:00:00"
-              , "2023-05-19 22:00:00"
-              , "2023-04-19 22:00:00"
-              , "2023-03-19 22:00:00"
-              , "2023-02-19 22:00:00"
-              , "2023-01-19 22:00:00"
-              , "2022-12-19 22:00:00"
-              , "2022-11-19 22:00:00"
+              , "2023-09-19 00:00:00"
+              , "2023-08-19 00:00:00"
+              , "2023-07-19 00:00:00"
+              , "2023-06-19 00:00:00"
+              , "2023-05-19 00:00:00"
+              , "2023-04-19 00:00:00"
+              , "2023-03-19 00:00:00"
+              , "2023-02-19 00:00:00"
+              , "2023-01-19 00:00:00"
+              , "2022-12-19 00:00:00"
+              , "2022-11-19 00:00:00"
               ]
         in applyRanges sampleRanges now `shouldBe` expected
 
@@ -213,12 +213,18 @@ spec = do
       property $ \(AGFSRanges ranges) (ALocalTime now) ->
         now `elem` unCheckpoints (applyRanges ranges now)
 
-    it "includes end time of the last range from now" $
+    it "includes now's midnight" $
       property $ \(AGFSRanges ranges) (ALocalTime now) ->
-        let endTime = getEndTime (NE.last $ unGFSRanges ranges) now
+        now{localTimeOfDay = midnight} `elem` unCheckpoints (applyRanges ranges now)
+
+    it "includes end time of the last range from now's midnight" $
+      property $ \(AGFSRanges ranges) (ALocalTime now) ->
+        let endTime = getEndTime (NE.last $ unGFSRanges ranges) now{localTimeOfDay = midnight}
+            actual = NE.toList (unCheckpoints $ applyRanges ranges now)
         in counterexample (mconcat
           [ "end time: ", show endTime
-          ]) $ endTime `elem` NE.toList (unCheckpoints $ applyRanges ranges now)
+          , "\nactual: ", show actual
+          ]) $ endTime `elem` actual
 
     it "returns sorted times" $
       property $ \(AGFSRanges ranges) (ALocalTime now) ->
@@ -230,9 +236,9 @@ spec = do
         let actualTimes = unCheckpoints $ applyRanges ranges now
         in actualTimes == NE.nub actualTimes
 
-    it "produces all times between end time and now" $
+    it "produces all times between end time and now's midnight" $
       property $ \(AGFSRanges ranges) (ALocalTime now) ->
-        let endTime = getEndTime (NE.last $ unGFSRanges ranges) now
+        let endTime = getEndTime (NE.last $ unGFSRanges ranges) now{localTimeOfDay = midnight}
             actual = applyRanges ranges now
             acceptedRange = (endTime, now)
             failing = filter (not . flip between acceptedRange) (NE.toList . unCheckpoints $ actual)
@@ -241,28 +247,6 @@ spec = do
           , "\nactual: ", show actual
           , "\n failing: ", show failing
           ]) $ null failing
-
-    it "contains times from each range in order" $ do
-      let timesFromRanges :: Maybe (NonEmpty GFSRange) -> LocalTime -> LocalTime -> LocalTime -> [LocalTime]
-          timesFromRanges Nothing _ _ _ = []
-          timesFromRanges (Just (range :| ranges)) totalEndTime now startTime =
-            let endTime = getEndTime range now
-                endTimeIsCorrect = endTime < startTime && endTime >= totalEndTime
-                times = applyRange totalEndTime range now startTime
-                newStartTime = maybe startTime NE.head $ NE.nonEmpty times
-                newTimes = times ++ timesFromRanges (NE.nonEmpty ranges) totalEndTime now newStartTime
-            in if endTimeIsCorrect then endTime : newTimes else newTimes
-
-      property $ \(AGFSRanges ranges) (ALocalTime now) ->
-        let expected = Set.fromList $ timesFromRanges (Just $ unGFSRanges ranges) totalEndTime now now
-            totalEndTime = getEndTime (NE.last . unGFSRanges $ ranges) now
-            actual = Set.fromList . NE.toList . unCheckpoints $ applyRanges ranges now
-            missingInActual = expected `Set.difference` actual
-        in counterexample (mconcat
-          [ "expected: ", show expected
-          , "\nactual: ", show actual
-          , "\nmissing in actual: ", show missingInActual
-          ]) $ null missingInActual
 
   describe "Show GFSRange instance (examples)" $ do
     it "shows step and limits separated by colon" $

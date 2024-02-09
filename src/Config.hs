@@ -7,6 +7,7 @@ module Config
 import GFS
 
 import Data.Text (Text)
+import Data.Time
 import Prelude hiding (until)
 import InputParser (FormatMatch)
 
@@ -19,6 +20,7 @@ data Config = Config
   , cfgGFSRanges :: GFSRanges
   , cfgVerbose :: Bool
   , cfgFormatMatch :: FormatMatch
+  , cfgNow :: Maybe LocalTime
   }
 
 -- | The default set of ranges for the GFS algorithm, based on TimeMachine's rules.

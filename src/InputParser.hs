@@ -1,6 +1,7 @@
 module InputParser
   ( Error(..)
   , FormatMatch(..)
+  , parseNow
   , parseTimes
   ) where
 
@@ -72,3 +73,6 @@ parseTimeM = Time.parseTimeM acceptWhitespace Time.defaultTimeLocale
 
 acceptWhitespace :: Bool
 acceptWhitespace = False
+
+parseNow :: MonadFail m => String -> m Time.LocalTime
+parseNow = parseTimeM "%FT%T"
